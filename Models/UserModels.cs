@@ -1,8 +1,8 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System;
-namespace SparkPoint_Server.Models
 
+namespace SparkPoint_Server.Models
 {
     public class User
     {
@@ -42,5 +42,40 @@ namespace SparkPoint_Server.Models
         [BsonElement("updatedAt")]
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    public class RegisterModel
+    {
+        public string Username { get; set; }
+        public string Email { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string Password { get; set; }
+        public string Role { get; set; }
+    }
+    public class UserUpdateModel
+    {
+        public string Username { get; set; }
+        public string Email { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string Password { get; set; }
+    }
+
+    public class UserListFilterModel
+    {
+        public int? RoleId { get; set; }
+        public bool? IsActive { get; set; }
+        public string SearchTerm { get; set; }
+    }
+
+    public class CreateStationUserModel
+    {
+        public string Username { get; set; }
+        public string Email { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string Password { get; set; }
+        public string ChargingStationId { get; set; }
     }
 }
