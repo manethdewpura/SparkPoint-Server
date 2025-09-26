@@ -211,26 +211,31 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="App_Start\WebApiConfig.cs" />
+<<<<<<< Updated upstream
+    <Compile Include="Global.asax.cs">
+      <DependentUpon>Global.asax</DependentUpon>
+    </Compile>
+=======
     <Compile Include="Middleware\OwnAccountMiddleware.cs" />
     <Compile Include="Middleware\RoleAuthorizeMiddleware.cs" />
     <Compile Include="Controllers\AuthController.cs" />
     <Compile Include="Controllers\BookingsController.cs" />
     <Compile Include="Controllers\EVOwnersController.cs" />
-    <Compile Include="Controllers\OwnersController.cs" />
     <Compile Include="Controllers\RolesController.cs" />
-    <Compile Include="Controllers\StationsController.cs" />
+    <Compile Include="Controllers\ChargingStationsController.cs" />
     <Compile Include="Controllers\UsersController.cs" />
     <Compile Include="Helpers\MongoDbContext.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="Helpers\JwtHelper.cs" />
-    <Compile Include="Models\Booking.cs" />
-    <Compile Include="Models\ChargingStation.cs" />
-    <Compile Include="Models\EVOwner.cs" />
-    <Compile Include="Models\Role.cs" />
-    <Compile Include="Models\User.cs" />
+    <Compile Include="Models\AuthModels.cs" />
+    <Compile Include="Models\BookingModels.cs" />
+    <Compile Include="Models\ChargingStationModels.cs" />
+    <Compile Include="Models\EVOwnerModels.cs" />
+    <Compile Include="Models\RoleModels.cs" />
     <Compile Include="Models\UserModels.cs" />
+>>>>>>> Stashed changes
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
