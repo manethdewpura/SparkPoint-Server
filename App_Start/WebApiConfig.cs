@@ -58,10 +58,6 @@ namespace SparkPoint_Server
                 IncludeErrorDetailPolicy.LocalOnly;
         }
 
-        /// <summary>
-        /// Determines if the application is running in production environment
-        /// </summary>
-        /// <returns>True if production environment</returns>
         private static bool IsProductionEnvironment()
         {
             var environment = ConfigurationManager.AppSettings["Environment"];
@@ -69,9 +65,6 @@ namespace SparkPoint_Server
         }
     }
 
-    /// <summary>
-    /// Secure CORS message handler with proper security configuration
-    /// </summary>
     public class SecureCorsMessageHandler : DelegatingHandler
     {
         private static readonly HashSet<string> AllowedOrigins = GetAllowedOrigins();
@@ -101,11 +94,6 @@ namespace SparkPoint_Server
             }, cancellationToken);
         }
 
-        /// <summary>
-        /// Adds secure CORS headers to the response
-        /// </summary>
-        /// <param name="response">HTTP response</param>
-        /// <param name="request">HTTP request</param>
         private void AddCorsHeaders(HttpResponseMessage response, HttpRequestMessage request)
         {
             var origin = request.Headers.GetValues("Origin")?.FirstOrDefault();
@@ -142,10 +130,6 @@ namespace SparkPoint_Server
             }
         }
 
-        /// <summary>
-        /// Gets allowed origins from configuration
-        /// </summary>
-        /// <returns>Set of allowed origins</returns>
         private static HashSet<string> GetAllowedOrigins()
         {
             var allowedOrigins = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -188,10 +172,6 @@ namespace SparkPoint_Server
             return allowedOrigins;
         }
 
-        /// <summary>
-        /// Checks if running in production environment
-        /// </summary>
-        /// <returns>True if production</returns>
         private static bool IsProduction()
         {
             var environment = ConfigurationManager.AppSettings["Environment"];

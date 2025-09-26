@@ -7,6 +7,7 @@ using System.Web.Http.Controllers;
 using System.Web.Http.Filters;
 using SparkPoint_Server.Helpers;
 using SparkPoint_Server.Models;
+using SparkPoint_Server.Constants;
 using MongoDB.Driver;
 
 namespace SparkPoint_Server.Attributes
@@ -33,7 +34,17 @@ namespace SparkPoint_Server.Attributes
         {
             try
             {
-                var currentUserId = GetCurrentUserId(actionContext);
+                var controller = actionContext.ControllerContext.Controller as System.Web.Http.ApiController;
+                if (controller == null)
+                {
+                    actionContext.Response = actionContext.Request.CreateResponse(
+                        HttpStatusCode.InternalServerError,
+                        new { error = "Internal error", message = "Unable to access controller context" }
+                    );
+                    return;
+                }
+
+                var currentUserId = UserContextHelper.GetCurrentUserId(controller);
                 if (string.IsNullOrEmpty(currentUserId))
                 {
                     actionContext.Response = actionContext.Request.CreateResponse(
@@ -43,15 +54,18 @@ namespace SparkPoint_Server.Attributes
                     return;
                 }
 
-                var currentUserRole = GetCurrentUserRole(actionContext);
+                var currentUserRole = UserContextHelper.GetCurrentUserRole(controller);
 
-                if (currentUserRole == "1" || currentUserRole == "2")
+                // Admin and Station User roles have full access
+                if (currentUserRole == AuthorizationConstants.Roles.Admin || 
+                    currentUserRole == AuthorizationConstants.Roles.StationUser)
                 {
                     base.OnActionExecuting(actionContext);
                     return;
                 }
 
-                if (currentUserRole == "3")
+                // EV Owner role needs ownership validation
+                if (currentUserRole == AuthorizationConstants.Roles.EVOwner)
                 {
                     if (!ValidateEVOwnerOwnership(actionContext, currentUserId))
                     {
@@ -126,32 +140,6 @@ namespace SparkPoint_Server.Attributes
             }
 
             return null;
-        }
-
-        private string GetCurrentUserId(HttpActionContext actionContext)
-        {
-            var authHeader = actionContext.Request.Headers.Authorization;
-            if (authHeader == null || authHeader.Scheme != "Bearer")
-                return null;
-
-            var principal = JwtHelper.ValidateToken(authHeader.Parameter);
-            if (principal == null)
-                return null;
-
-            return principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        }
-
-        private string GetCurrentUserRole(HttpActionContext actionContext)
-        {
-            var authHeader = actionContext.Request.Headers.Authorization;
-            if (authHeader == null || authHeader.Scheme != "Bearer")
-                return null;
-
-            var principal = JwtHelper.ValidateToken(authHeader.Parameter);
-            if (principal == null)
-                return null;
-
-            return principal.FindFirst(ClaimTypes.Role)?.Value;
         }
     }
 }

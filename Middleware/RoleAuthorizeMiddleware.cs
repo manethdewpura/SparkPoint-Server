@@ -6,6 +6,7 @@ using System.Security.Claims;
 using System.Web.Http;
 using System.Web.Http.Controllers;
 using SparkPoint_Server.Helpers;
+using SparkPoint_Server.Constants;
 
 namespace SparkPoint_Server.Attributes
 {
@@ -57,5 +58,58 @@ namespace SparkPoint_Server.Attributes
                 HttpStatusCode.Forbidden, 
                 new { error = "Access denied", message = "You are not authorized to access this resource" });
         }
+    }
+
+    // Specific role attributes for common use cases
+    public class AdminOnlyAttribute : RoleAuthorizeMiddleware
+    {
+        public AdminOnlyAttribute() : base(AuthorizationConstants.Roles.Admin) { }
+    }
+
+    public class StationUserOnlyAttribute : RoleAuthorizeMiddleware
+    {
+        public StationUserOnlyAttribute() : base(AuthorizationConstants.Roles.StationUser) { }
+    }
+
+    public class EVOwnerOnlyAttribute : RoleAuthorizeMiddleware
+    {
+        public EVOwnerOnlyAttribute() : base(AuthorizationConstants.Roles.EVOwner) { }
+    }
+
+    public class AdminAndStationUserAttribute : RoleAuthorizeMiddleware
+    {
+        public AdminAndStationUserAttribute() : base(AuthorizationConstants.Roles.Admin, AuthorizationConstants.Roles.StationUser) { }
+    }
+
+    public class AdminAndEVOwnerAttribute : RoleAuthorizeMiddleware
+    {
+        public AdminAndEVOwnerAttribute() : base(AuthorizationConstants.Roles.Admin, AuthorizationConstants.Roles.EVOwner) { }
+    }
+
+    public class AllRolesAttribute : RoleAuthorizeMiddleware
+    {
+        public AllRolesAttribute() : base(AuthorizationConstants.Roles.Admin, AuthorizationConstants.Roles.StationUser, AuthorizationConstants.Roles.EVOwner) { }
+    }
+
+    // For backwards compatibility and explicit role specification
+    public class RequireRolesAttribute : RoleAuthorizeMiddleware
+    {
+        public RequireRolesAttribute(params string[] roles) : base(roles) { }
+
+        // Named constructors for common scenarios
+        public static RequireRolesAttribute Admin()
+            => new RequireRolesAttribute(AuthorizationConstants.Roles.Admin);
+
+        public static RequireRolesAttribute StationUser()
+            => new RequireRolesAttribute(AuthorizationConstants.Roles.StationUser);
+
+        public static RequireRolesAttribute EVOwner()
+            => new RequireRolesAttribute(AuthorizationConstants.Roles.EVOwner);
+
+        public static RequireRolesAttribute AdminOrStationUser()
+            => new RequireRolesAttribute(AuthorizationConstants.Roles.Admin, AuthorizationConstants.Roles.StationUser);
+
+        public static RequireRolesAttribute AdminOrEVOwner()
+            => new RequireRolesAttribute(AuthorizationConstants.Roles.Admin, AuthorizationConstants.Roles.EVOwner);
     }
 }

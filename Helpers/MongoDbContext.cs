@@ -4,10 +4,8 @@ using MongoDB.Driver;
 
 namespace SparkPoint_Server.Helpers
 {
-    /// <summary>
-    /// MongoDB context with singleton MongoClient for connection reuse
-    /// </summary>
-    public class MongoDbContext : IDisposable
+
+    public class MongoDbContext
     {
         private readonly IMongoDatabase _database;
         private static readonly Lazy<MongoClient> _lazyClient = new Lazy<MongoClient>(CreateMongoClient);
@@ -19,10 +17,6 @@ namespace SparkPoint_Server.Helpers
             _database = Client.GetDatabase(databaseName);
         }
 
-        /// <summary>
-        /// Creates the MongoClient singleton with optimal settings
-        /// </summary>
-        /// <returns>Configured MongoClient instance</returns>
         private static MongoClient CreateMongoClient()
         {
             var connectionString = GetConnectionString();
@@ -45,10 +39,6 @@ namespace SparkPoint_Server.Helpers
             return new MongoClient(settings);
         }
 
-        /// <summary>
-        /// Gets connection string from configuration with environment variable fallback
-        /// </summary>
-        /// <returns>MongoDB connection string</returns>
         private static string GetConnectionString()
         {
             // Try environment variable first (for production)
@@ -69,10 +59,6 @@ namespace SparkPoint_Server.Helpers
             return connectionString;
         }
 
-        /// <summary>
-        /// Gets database name from configuration with environment variable fallback
-        /// </summary>
-        /// <returns>MongoDB database name</returns>
         private static string GetDatabaseName()
         {
             // Try environment variable first (for production)
@@ -92,31 +78,16 @@ namespace SparkPoint_Server.Helpers
 
             return databaseName;
         }
-
-        /// <summary>
-        /// Gets a MongoDB collection
-        /// </summary>
-        /// <typeparam name="T">Document type</typeparam>
-        /// <param name="name">Collection name</param>
-        /// <returns>MongoDB collection</returns>
         public IMongoCollection<T> GetCollection<T>(string name)
         {
             return _database.GetCollection<T>(name);
         }
 
-        /// <summary>
-        /// Gets the database instance
-        /// </summary>
-        /// <returns>MongoDB database</returns>
         public IMongoDatabase GetDatabase()
         {
             return _database;
         }
 
-        /// <summary>
-        /// Tests database connectivity
-        /// </summary>
-        /// <returns>True if database is accessible</returns>
         public bool TestConnection()
         {
             try
@@ -129,12 +100,6 @@ namespace SparkPoint_Server.Helpers
             {
                 return false;
             }
-        }
-
-        public void Dispose()
-        {
-            // MongoClient manages its own resources and should be kept as singleton
-            // No disposal needed here
         }
     }
 }

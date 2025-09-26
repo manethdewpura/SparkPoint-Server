@@ -35,13 +35,8 @@ namespace SparkPoint_Server.Helpers
             return tokenHandler.WriteToken(token);
         }
 
-        /// <summary>
-        /// Generates a cryptographically secure refresh token
-        /// </summary>
-        /// <returns>Base64 encoded secure random token</returns>
         public static string GenerateRefreshToken()
         {
-            // Generate 256 bits (32 bytes) of cryptographically secure random data
             const int tokenLength = 32;
             
             using (var rng = RandomNumberGenerator.Create())
@@ -52,10 +47,6 @@ namespace SparkPoint_Server.Helpers
             }
         }
 
-        /// <summary>
-        /// Generates a refresh token with expiry information
-        /// </summary>
-        /// <returns>Refresh token data with expiry</returns>
         public static RefreshTokenData GenerateRefreshTokenWithExpiry()
         {
             return new RefreshTokenData
@@ -94,9 +85,6 @@ namespace SparkPoint_Server.Helpers
         }
     }
 
-    /// <summary>
-    /// Data structure for refresh token information
-    /// </summary>
     public class RefreshTokenData
     {
         public string Token { get; set; }

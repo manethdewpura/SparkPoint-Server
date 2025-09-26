@@ -10,6 +10,7 @@ using SparkPoint_Server.Helpers;
 using SparkPoint_Server.Services;
 using SparkPoint_Server.Utils;
 using SparkPoint_Server.Attributes;
+using SparkPoint_Server.Constants;
 using MongoDB.Driver;
 
 namespace SparkPoint_Server.Controllers
@@ -26,7 +27,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpPost]
         [Route("")]
-        [RoleAuthorizeMiddleware("1", "3")]
+        [AdminAndEVOwner]
         public IHttpActionResult CreateBooking(BookingCreateModel model)
         {
             var userContext = UserContextHelper.GetUserContext(this);
@@ -47,7 +48,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpGet]
         [Route("")]
-        [RoleAuthorizeMiddleware("1", "2", "3")]
+        [AllRoles]
         public IHttpActionResult GetBookings([FromUri] BookingFilterModel filter = null)
         {
             var userContext = UserContextHelper.GetUserContext(this);
@@ -64,7 +65,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpGet]
         [Route("{bookingId}")]
-        [RoleAuthorizeMiddleware("1", "2", "3")]
+        [AllRoles]
         public IHttpActionResult GetBooking(string bookingId)
         {
             var userContext = UserContextHelper.GetUserContext(this);
@@ -81,7 +82,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpPut]
         [Route("{bookingId}")]
-        [RoleAuthorizeMiddleware("1", "3")]
+        [AdminAndEVOwner]
         public IHttpActionResult UpdateBooking(string bookingId, BookingUpdateModel model)
         {
             var userContext = UserContextHelper.GetUserContext(this);
@@ -98,7 +99,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpPut]
         [Route("cancel/{bookingId}")]
-        [RoleAuthorizeMiddleware("1", "3")]
+        [AdminAndEVOwner]
         public IHttpActionResult CancelBooking(string bookingId)
         {
             var userContext = UserContextHelper.GetUserContext(this);
@@ -115,7 +116,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpPut]
         [Route("status/{bookingId}")]
-        [RoleAuthorizeMiddleware("1", "2")]
+        [AdminAndStationUser]
         public IHttpActionResult UpdateBookingStatus(string bookingId, BookingStatusUpdateModel model)
         {
             var userContext = UserContextHelper.GetUserContext(this);
@@ -132,7 +133,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpGet]
         [Route("availability/{stationId}")]
-        [RoleAuthorizeMiddleware("1", "2", "3")]
+        [AllRoles]
         public IHttpActionResult CheckSlotAvailability(string stationId, [FromUri] DateTime reservationTime)
         {
             var result = _bookingService.CheckSlotAvailabilityForResult(stationId, reservationTime);

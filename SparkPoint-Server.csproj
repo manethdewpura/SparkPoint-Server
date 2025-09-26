@@ -303,6 +303,7 @@
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Constants\ApplicationConstants.cs" />
     <Compile Include="Constants\AuthConstants.cs" />
+    <Compile Include="Constants\AuthorizationConstants.cs" />
     <Compile Include="Constants\BookingStatusConstants.cs" />
     <Compile Include="Constants\ChargingStationConstants.cs" />
     <Compile Include="Constants\UserConstants.cs" />
@@ -341,16 +342,19 @@
     <Compile Include="Services\AuthService.cs" />
     <Compile Include="Services\ChargingStationService.cs" />
     <Compile Include="Services\EVOwnerService.cs" />
+    <Compile Include="Services\RefreshTokenService.cs" />
+    <Compile Include="Services\TokenCleanupService.cs" />
     <Compile Include="Services\UserService.cs" />
     <Compile Include="Utils\AuthUtils.cs" />
     <Compile Include="Utils\BookingUtils.cs" />
     <Compile Include="Utils\ChargingStationUtils.cs" />
-    <Compile Include="Utils\ControllerUtils.cs" />
     <Compile Include="Services\BookingService.cs" />
     <Compile Include="Utils\PasswordUtils.cs" />
+    <Compile Include="Utils\TokenSecurityUtils.cs" />
     <Compile Include="Utils\UserUtils.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include=".env" />
     <None Include="packages.config" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>

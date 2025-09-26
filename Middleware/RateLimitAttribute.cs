@@ -10,16 +10,12 @@ using SparkPoint_Server.Constants;
 
 namespace SparkPoint_Server.Middleware
 {
-    /// <summary>
-    /// Simple in-memory rate limiting filter for API endpoints
-    /// Note: In production, use Redis or similar for distributed rate limiting
-    /// </summary>
+
     public class RateLimitAttribute : ActionFilterAttribute
     {
         private readonly int _requestsPerMinute;
         private readonly string _rateLimitType;
         
-        // In-memory storage for rate limiting (use Redis in production)
         private static readonly ConcurrentDictionary<string, RateLimitInfo> _rateLimitStore = 
             new ConcurrentDictionary<string, RateLimitInfo>();
 
@@ -37,8 +33,7 @@ namespace SparkPoint_Server.Middleware
             
             var key = $"{identifier}:{_rateLimitType}:{windowStart.Ticks}";
             
-            // Clean up old entries periodically
-            if (_rateLimitStore.Count > 10000) // Prevent memory bloat
+            if (_rateLimitStore.Count > 10000)
             {
                 CleanupOldEntries();
             }
@@ -58,10 +53,9 @@ namespace SparkPoint_Server.Middleware
                     }
                 });
 
-            // Check if rate limit exceeded
             if (rateLimitInfo.Count > _requestsPerMinute)
             {
-                var response = actionContext.Request.CreateResponse((HttpStatusCode)429); // 429 Too Many Requests
+                var response = actionContext.Request.CreateResponse((HttpStatusCode)429);
                 response.Headers.Add("X-RateLimit-Limit", _requestsPerMinute.ToString());
                 response.Headers.Add("X-RateLimit-Remaining", "0");
                 response.Headers.Add("X-RateLimit-Reset", windowStart.AddMinutes(1).ToString("yyyy-MM-ddTHH:mm:ssZ"));
@@ -110,11 +104,6 @@ namespace SparkPoint_Server.Middleware
             base.OnActionExecuted(actionExecutedContext);
         }
 
-        /// <summary>
-        /// Gets client identifier for rate limiting (IP address + User ID if available)
-        /// </summary>
-        /// <param name="actionContext">Action context</param>
-        /// <returns>Client identifier</returns>
         private string GetClientIdentifier(HttpActionContext actionContext)
         {
             // Get client IP
@@ -131,11 +120,6 @@ namespace SparkPoint_Server.Middleware
             return $"ip:{clientIp}";
         }
 
-        /// <summary>
-        /// Gets client IP address from request
-        /// </summary>
-        /// <param name="actionContext">Action context</param>
-        /// <returns>Client IP address</returns>
         private string GetClientIpAddress(HttpActionContext actionContext)
         {
             // Check for forwarded IP (load balancer/proxy)
@@ -166,11 +150,6 @@ namespace SparkPoint_Server.Middleware
             return "unknown";
         }
 
-        /// <summary>
-        /// Gets user ID from JWT token if available
-        /// </summary>
-        /// <param name="actionContext">Action context</param>
-        /// <returns>User ID or null</returns>
         private string GetUserIdFromToken(HttpActionContext actionContext)
         {
             try
@@ -191,14 +170,11 @@ namespace SparkPoint_Server.Middleware
             }
         }
 
-        /// <summary>
-        /// Cleans up old rate limit entries to prevent memory bloat
-        /// </summary>
         private void CleanupOldEntries()
         {
             try
             {
-                var cutoffTime = DateTime.UtcNow.AddMinutes(-5); // Keep last 5 minutes
+                var cutoffTime = DateTime.UtcNow.AddMinutes(-5);
                 var keysToRemove = new System.Collections.Generic.List<string>();
 
                 foreach (var kvp in _rateLimitStore)
@@ -216,14 +192,10 @@ namespace SparkPoint_Server.Middleware
             }
             catch
             {
-                // Ignore cleanup errors
             }
         }
     }
 
-    /// <summary>
-    /// Specific rate limit attributes for different endpoint types
-    /// </summary>
     public class AuthRateLimitAttribute : RateLimitAttribute
     {
         public AuthRateLimitAttribute() : base(AuthConstants.AuthRateLimitPerMinute, "auth") { }
@@ -239,9 +211,6 @@ namespace SparkPoint_Server.Middleware
         public ReadRateLimitAttribute() : base(AuthConstants.ReadRateLimitPerMinute, "read") { }
     }
 
-    /// <summary>
-    /// Rate limit information for tracking requests
-    /// </summary>
     internal class RateLimitInfo
     {
         public int Count { get; set; }

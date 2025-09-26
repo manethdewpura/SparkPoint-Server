@@ -48,11 +48,11 @@ namespace SparkPoint_Server.Controllers
 
         [HttpPut]
         [Route("profile")]
-        [RoleAuthorizeMiddleware("1")]
+        [AdminOnly]
         [OwnAccountMiddleware]
         public IHttpActionResult UpdateProfile(UserUpdateModel model)
         {
-            var currentUserId = GetCurrentUserId();
+            var currentUserId = UserContextHelper.GetCurrentUserId(this);
             if (string.IsNullOrEmpty(currentUserId))
                 return Unauthorized();
 
@@ -71,11 +71,11 @@ namespace SparkPoint_Server.Controllers
 
         [HttpGet]
         [Route("profile")]
-        [RoleAuthorizeMiddleware("1")]
+        [AdminOnly]
         [OwnAccountMiddleware]
         public IHttpActionResult GetProfile()
         {
-            var currentUserId = GetCurrentUserId();
+            var currentUserId = UserContextHelper.GetCurrentUserId(this);
             if (string.IsNullOrEmpty(currentUserId))
                 return Unauthorized();
 
@@ -94,7 +94,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpPost]
         [Route("station-user")]
-        [RoleAuthorizeMiddleware("1")]
+        [AdminOnly]
         public IHttpActionResult CreateStationUser(CreateStationUserModel model)
         {
             if (model == null)
@@ -124,7 +124,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpGet]
         [Route("station-user/{userId}")]
-        [RoleAuthorizeMiddleware("1")]
+        [AdminOnly]
         public IHttpActionResult GetStationUserProfile(string userId)
         {
             var result = _userService.GetStationUserProfile(userId);
@@ -139,7 +139,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpPut]
         [Route("station-user/{userId}")]
-        [RoleAuthorizeMiddleware("1")]
+        [AdminOnly]
         public IHttpActionResult UpdateStationUser(string userId, UserUpdateModel model)
         {
             var result = _userService.UpdateStationUser(userId, model);
@@ -150,19 +150,6 @@ namespace SparkPoint_Server.Controllers
             }
 
             return Ok(result.Message);
-        }
-
-        private string GetCurrentUserId()
-        {
-            var authHeader = Request.Headers.Authorization;
-            if (authHeader == null || authHeader.Scheme != "Bearer")
-                return null;
-
-            var principal = JwtHelper.ValidateToken(authHeader.Parameter);
-            if (principal == null)
-                return null;
-
-            return principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         }
 
         private IHttpActionResult GetErrorResponse(UserOperationStatus status, string errorMessage)
