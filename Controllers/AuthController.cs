@@ -6,6 +6,7 @@ using System.Text;
 using System.Web.Http;
 using SparkPoint_Server.Models;
 using SparkPoint_Server.Helpers;
+using SparkPoint_Server.Services;
 using MongoDB.Driver;
 
 namespace SparkPoint_Server.Controllers
@@ -13,67 +14,38 @@ namespace SparkPoint_Server.Controllers
     [RoutePrefix("api/auth")]
     public class AuthController : ApiController
     {
-        private readonly IMongoCollection<User> _usersCollection;
-        private readonly IMongoCollection<RefreshTokenEntry> _refreshTokensCollection;
-        private readonly IMongoCollection<EVOwner> _evOwnersCollection;
+        private readonly AuthService _authService;
 
         public AuthController()
         {
-            var dbContext = new MongoDbContext();
-            _usersCollection = dbContext.GetCollection<User>("Users");
-            _refreshTokensCollection = dbContext.GetCollection<RefreshTokenEntry>("RefreshTokens");
-            _evOwnersCollection = dbContext.GetCollection<EVOwner>("EVOwners");
+            _authService = new AuthService();
         }
 
         [HttpPost]
         [Route("login")]
         public IHttpActionResult Login(LoginModel model)
         {
-            var user = _usersCollection.Find(u => u.Username == model.Username).FirstOrDefault();
-            if (user == null || !VerifyPassword(model.Password, user.PasswordHash))
-                return Unauthorized();
+            if (model == null || string.IsNullOrEmpty(model.Username) || string.IsNullOrEmpty(model.Password))
+            {
+                return BadRequest("Username and password are required");
+            }
+
+            var result = _authService.AuthenticateUser(model.Username, model.Password);
             
-            if (!user.IsActive)
+            if (!result.IsSuccess)
             {
-                var evOwner = _evOwnersCollection.Find(o => o.UserId == user.Id).FirstOrDefault();
-                if (evOwner != null)
-                    return BadRequest("Your EV Owner account has been deactivated. Please contact a back-office officer for reactivation.");
-                else
-                    return BadRequest("User account is inactive.");
-            }
-
-            var accessToken = JwtHelper.GenerateAccessToken(user);
-            var refreshToken = JwtHelper.GenerateRefreshToken();
-            var refreshEntry = new RefreshTokenEntry { UserId = user.Id, Token = refreshToken };
-            _refreshTokensCollection.ReplaceOne(
-                x => x.UserId == user.Id,
-                refreshEntry,
-                new ReplaceOptions { IsUpsert = true }
-            );
-
-            object userInfo;
-            if (user.RoleId == 3)
-            {
-                var evOwner = _evOwnersCollection.Find(o => o.UserId == user.Id).FirstOrDefault();
-                if (evOwner != null)
+                if (result.ErrorMessage.Contains("Invalid username or password"))
                 {
-                    userInfo = new { user.Id, user.Username, user.Email, RoleId = user.RoleId, NIC = evOwner.NIC };
+                    return Unauthorized();
                 }
-                else
-                {
-                    userInfo = new { user.Id, user.Username, user.Email, RoleId = user.RoleId };
-                }
-            }
-            else
-            {
-                userInfo = new { user.Id, user.Username, user.Email, RoleId = user.RoleId };
+                return BadRequest(result.ErrorMessage);
             }
 
             return Ok(new
             {
-                accessToken,
-                refreshToken,
-                user = userInfo
+                accessToken = result.AccessToken,
+                refreshToken = result.RefreshToken,
+                user = result.UserInfo
             });
         }
 
@@ -81,31 +53,27 @@ namespace SparkPoint_Server.Controllers
         [Route("refresh")]
         public IHttpActionResult Refresh(RefreshModel model)
         {
-            var user = _usersCollection.Find(u => u.Id == model.UserId).FirstOrDefault();
-            var refreshEntry = _refreshTokensCollection.Find(x => x.UserId == model.UserId && x.Token == model.RefreshToken).FirstOrDefault();
-            if (user == null || refreshEntry == null)
-                return Unauthorized();
-            
-            if (!user.IsActive)
-                return BadRequest("User account is inactive.");
-                
-            var accessToken = JwtHelper.GenerateAccessToken(user);
-            var newRefreshToken = JwtHelper.GenerateRefreshToken();
-            refreshEntry.Token = newRefreshToken;
-            _refreshTokensCollection.ReplaceOne(x => x.UserId == user.Id, refreshEntry);
-            return Ok(new { accessToken, refreshToken = newRefreshToken });
-        }
-        private string HashPassword(string password)
-        {
-            using (var sha = SHA256.Create())
+            if (model == null || string.IsNullOrEmpty(model.UserId) || string.IsNullOrEmpty(model.RefreshToken))
             {
-                var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(password));
-                return Convert.ToBase64String(bytes);
+                return BadRequest("UserId and RefreshToken are required");
             }
-        }
-        private bool VerifyPassword(string password, string hash)
-        {
-            return HashPassword(password) == hash;
+
+            var result = _authService.RefreshToken(model.UserId, model.RefreshToken);
+            
+            if (!result.IsSuccess)
+            {
+                if (result.ErrorMessage.Contains("not found") || result.ErrorMessage.Contains("Invalid"))
+                {
+                    return Unauthorized();
+                }
+                return BadRequest(result.ErrorMessage);
+            }
+
+            return Ok(new 
+            { 
+                accessToken = result.AccessToken, 
+                refreshToken = result.RefreshToken 
+            });
         }
     }
 }
