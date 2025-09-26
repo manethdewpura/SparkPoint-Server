@@ -14,6 +14,7 @@ namespace SparkPoint_Server.Services
         private readonly IMongoCollection<User> _usersCollection;
         private readonly IMongoCollection<RefreshTokenEntry> _refreshTokensCollection;
         private readonly IMongoCollection<EVOwner> _evOwnersCollection;
+        private readonly AuthMigrationService _authMigrationService;
 
         public AuthService()
         {
@@ -21,35 +22,41 @@ namespace SparkPoint_Server.Services
             _usersCollection = dbContext.GetCollection<User>(AuthConstants.UsersCollection);
             _refreshTokensCollection = dbContext.GetCollection<RefreshTokenEntry>(AuthConstants.RefreshTokensCollection);
             _evOwnersCollection = dbContext.GetCollection<EVOwner>(AuthConstants.EVOwnersCollection);
+            _authMigrationService = new AuthMigrationService();
         }
 
-        public AuthenticationResult AuthenticateUser(string username, string password)
+        public Models.AuthenticationResult AuthenticateUser(string username, string password)
         {
-            // Find user by username
-            var user = _usersCollection.Find(u => u.Username == username).FirstOrDefault();
-            if (user == null || !PasswordUtils.VerifyPassword(password, user.PasswordHash))
+            // Use the new AuthMigrationService for authentication with password migration
+            var migrationResult = _authMigrationService.AuthenticateAndMigratePassword(username, password);
+            
+            if (!migrationResult.IsSuccess)
             {
-                return AuthenticationResult.Failed(AuthenticationStatus.InvalidCredentials);
+                // Map migration result to existing AuthenticationResult
+                var status = MapToAuthenticationStatus(migrationResult.Message);
+                return Models.AuthenticationResult.Failed(status, migrationResult.Message);
             }
 
-            // Check if user is active
+            var user = migrationResult.User;
+
+            // Check if user is active (double check)
             if (!user.IsActive)
             {
                 var status = GetInactiveUserStatus(user);
-                return AuthenticationResult.Failed(status);
+                return Models.AuthenticationResult.Failed(status);
             }
 
             // Generate tokens
             var accessToken = JwtHelper.GenerateAccessToken(user);
             var refreshToken = JwtHelper.GenerateRefreshToken();
 
-            // Store refresh token
+            // Store refresh token with new enhanced format
             StoreRefreshToken(user.Id, refreshToken);
 
             // Get user info with additional details if needed
             var userInfo = GetUserInfoForResponse(user);
 
-            return AuthenticationResult.Success(accessToken, refreshToken, userInfo);
+            return Models.AuthenticationResult.Success(accessToken, refreshToken, userInfo);
         }
 
         public TokenRefreshResult RefreshToken(string userId, string refreshToken)
@@ -77,13 +84,20 @@ namespace SparkPoint_Server.Services
                 return TokenRefreshResult.Failed(TokenRefreshStatus.UserInactive);
             }
 
-            // Generate new tokens
+            // Generate new tokens with enhanced security
             var newAccessToken = JwtHelper.GenerateAccessToken(user);
             var newRefreshToken = JwtHelper.GenerateRefreshToken();
 
-            // Update refresh token in database
-            refreshEntry.Token = newRefreshToken;
-            _refreshTokensCollection.ReplaceOne(x => x.UserId == userId, refreshEntry);
+            // Update refresh token in database with enhanced data
+            var newRefreshEntry = new RefreshTokenEntry 
+            { 
+                UserId = userId, 
+                Token = newRefreshToken,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddDays(AuthConstants.RefreshTokenExpiryDays)
+            };
+
+            _refreshTokensCollection.ReplaceOne(x => x.UserId == userId, newRefreshEntry);
 
             return TokenRefreshResult.Success(newAccessToken, newRefreshToken);
         }
@@ -93,7 +107,9 @@ namespace SparkPoint_Server.Services
             var refreshEntry = new RefreshTokenEntry 
             { 
                 UserId = userId, 
-                Token = refreshToken 
+                Token = refreshToken,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddDays(AuthConstants.RefreshTokenExpiryDays)
             };
 
             _refreshTokensCollection.ReplaceOne(
@@ -114,6 +130,18 @@ namespace SparkPoint_Server.Services
                 }
             }
             return AuthenticationStatus.UserInactive;
+        }
+
+        private AuthenticationStatus MapToAuthenticationStatus(string message)
+        {
+            if (message.Contains("Invalid credentials"))
+                return AuthenticationStatus.InvalidCredentials;
+            if (message.Contains("deactivated"))
+                return AuthenticationStatus.UserInactive;
+            if (message.Contains("not found"))
+                return AuthenticationStatus.UserNotFound;
+            
+            return AuthenticationStatus.Failed;
         }
 
         private object GetUserInfoForResponse(User user)

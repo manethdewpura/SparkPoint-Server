@@ -23,7 +23,13 @@ namespace SparkPoint_Server.Models
     {
         public string UserId { get; set; }
         public string Token { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime ExpiresAt { get; set; }
+        public bool IsRevoked { get; set; } = false;
+        public string RevokedReason { get; set; }
+        public DateTime? RevokedAt { get; set; }
     }
+    
     public class AuthenticationResult
     {
         public AuthenticationStatus Status { get; private set; }

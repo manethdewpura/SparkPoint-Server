@@ -38,46 +38,48 @@ namespace SparkPoint_Server.Attributes
                 {
                     actionContext.Response = actionContext.Request.CreateResponse(
                         HttpStatusCode.Unauthorized,
-                        "Unable to identify current user."
+                        new { error = "Authentication required", message = "Unable to identify current user" }
                     );
                     return;
+                }
 
-                    var currentUserRole = GetCurrentUserRole(actionContext);
+                var currentUserRole = GetCurrentUserRole(actionContext);
 
-                    if (currentUserRole == "1" || currentUserRole == "2")
-                    {
-                        base.OnActionExecuting(actionContext);
-                        return;
-                    }
+                if (currentUserRole == "1" || currentUserRole == "2")
+                {
+                    base.OnActionExecuting(actionContext);
+                    return;
+                }
 
-                    if (currentUserRole == "3")
-                    {
-                        if (!ValidateEVOwnerOwnership(actionContext, currentUserId))
-                        {
-                            actionContext.Response = actionContext.Request.CreateResponse(
-                                HttpStatusCode.Forbidden,
-                                "You can only access your own account."
-                            );
-                            return;
-                        }
-                    }
-                    else
+                if (currentUserRole == "3")
+                {
+                    if (!ValidateEVOwnerOwnership(actionContext, currentUserId))
                     {
                         actionContext.Response = actionContext.Request.CreateResponse(
                             HttpStatusCode.Forbidden,
-                            "You are not authorized to perform this operation."
+                            new { error = "Access denied", message = "You can only access your own account" }
                         );
                         return;
                     }
-
-                    base.OnActionExecuting(actionContext);
                 }
+                else
+                {
+                    actionContext.Response = actionContext.Request.CreateResponse(
+                        HttpStatusCode.Forbidden,
+                        new { error = "Access denied", message = "You are not authorized to perform this operation" }
+                    );
+                    return;
+                }
+
+                base.OnActionExecuting(actionContext);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"OwnAccountMiddleware error: {ex.Message}");
+                
                 actionContext.Response = actionContext.Request.CreateResponse(
                     HttpStatusCode.InternalServerError,
-                    "Error validating account ownership."
+                    new { error = "Internal error", message = "Error validating account ownership" }
                 );
             }
         }
@@ -87,60 +89,40 @@ namespace SparkPoint_Server.Attributes
             var dbContext = new MongoDbContext();
             var evOwnersCollection = dbContext.GetCollection<EVOwner>("EVOwners");
 
-            // If validating by NIC parameter
             if (!string.IsNullOrEmpty(_nicParameterName))
             {
-                var nicValue = actionContext.ActionArguments.ContainsKey(_nicParameterName)
-                    ? actionContext.ActionArguments[_nicParameterName]?.ToString()
-                    : GetRouteValue(actionContext, _nicParameterName);
+                var nicValue = GetParameterValue(actionContext, _nicParameterName);
 
                 if (string.IsNullOrEmpty(nicValue))
                 {
-                    // For operations without NIC parameter (like profile update), 
-                    // just validate that the user is an EV Owner
                     var currentUserEvOwner = evOwnersCollection.Find(o => o.UserId == currentUserId).FirstOrDefault();
                     return currentUserEvOwner != null;
                 }
 
-                // Check if the requested NIC belongs to the current user
                 var evOwner = evOwnersCollection.Find(o => o.NIC == nicValue).FirstOrDefault();
                 return evOwner != null && evOwner.UserId == currentUserId;
             }
 
-            // If validating by UserId parameter
             if (!string.IsNullOrEmpty(_userIdParameterName))
             {
-                var userIdValue = actionContext.ActionArguments.ContainsKey(_userIdParameterName)
-                    ? actionContext.ActionArguments[_userIdParameterName]?.ToString()
-                    : GetRouteValue(actionContext, _userIdParameterName);
-
+                var userIdValue = GetParameterValue(actionContext, _userIdParameterName);
                 return userIdValue == currentUserId;
             }
 
-            // Default: just validate that the user is an EV Owner
             var evOwnerRecord = evOwnersCollection.Find(o => o.UserId == currentUserId).FirstOrDefault();
             return evOwnerRecord != null;
         }
 
-        private string GetRouteValue(HttpActionContext actionContext, string parameterName)
+        private string GetParameterValue(HttpActionContext actionContext, string parameterName)
         {
-            // Try to get from route data through the controller context
+            if (actionContext.ActionArguments.ContainsKey(parameterName))
+            {
+                return actionContext.ActionArguments[parameterName]?.ToString();
+            }
+
             if (actionContext.ControllerContext.RouteData.Values.ContainsKey(parameterName))
             {
                 return actionContext.ControllerContext.RouteData.Values[parameterName]?.ToString();
-            }
-
-            // Try to get from request URI
-            var requestUri = actionContext.Request.RequestUri;
-            if (requestUri != null)
-            {
-                var segments = requestUri.Segments;
-                // This is a simple approach - in a real scenario, you might need more sophisticated route parsing
-                if (segments.Length > 0)
-                {
-                    var lastSegment = segments.LastOrDefault()?.Trim('/');
-                    return lastSegment;
-                }
             }
 
             return null;

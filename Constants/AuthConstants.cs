@@ -1,13 +1,18 @@
+using System;
+
 namespace SparkPoint_Server.Constants
 {
     public static class AuthConstants
     {
         // JWT Configuration
-        public static readonly string SecretKey = "3gAI5KtwwXRPK1vmM5A3j8W3oFy+aV7xIj2oc7um5zFQ24Au+SzZTNELjEx7busO";
-        public static readonly string Issuer = "SparkPoint_Server";
-        public static readonly string Audience = "SparkPoint_Client";
+        public static readonly string SecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") 
+            ?? throw new InvalidOperationException("JWT_SECRET_KEY environment variable is required");
+        
+        public static readonly string Issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "SparkPoint_Server";
+        public static readonly string Audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "SparkPoint_Client";
+        
         public const int AccessTokenExpiryMinutes = 30;
-        public const int RefreshTokenExpiryDays = 7;
+        public const int RefreshTokenExpiryDays = 30; // Extended for better UX, but tokens can be rotated
 
         // Authentication Messages
         public const string InvalidCredentials = "Invalid username or password";
@@ -24,5 +29,10 @@ namespace SparkPoint_Server.Constants
         public const string UsersCollection = "Users";
         public const string RefreshTokensCollection = "RefreshTokens";
         public const string EVOwnersCollection = "EVOwners";
+
+        // Rate Limiting (requests per minute)
+        public const int AuthRateLimitPerMinute = 10;
+        public const int MutationRateLimitPerMinute = 60;
+        public const int ReadRateLimitPerMinute = 100;
     }
 }
