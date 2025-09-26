@@ -211,11 +211,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="App_Start\WebApiConfig.cs" />
-<<<<<<< Updated upstream
-    <Compile Include="Global.asax.cs">
-      <DependentUpon>Global.asax</DependentUpon>
-    </Compile>
-=======
     <Compile Include="Middleware\OwnAccountMiddleware.cs" />
     <Compile Include="Middleware\RoleAuthorizeMiddleware.cs" />
     <Compile Include="Controllers\AuthController.cs" />
@@ -235,7 +230,6 @@
     <Compile Include="Models\EVOwnerModels.cs" />
     <Compile Include="Models\RoleModels.cs" />
     <Compile Include="Models\UserModels.cs" />
->>>>>>> Stashed changes
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
