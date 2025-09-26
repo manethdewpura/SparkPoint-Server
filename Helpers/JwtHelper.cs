@@ -5,21 +5,16 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using SparkPoint_Server.Models;
+using SparkPoint_Server.Constants;
 
 namespace SparkPoint_Server.Helpers
 {
     public static class JwtHelper
     {
-        private static readonly string SecretKey = "3gAI5KtwwXRPK1vmM5A3j8W3oFy+aV7xIj2oc7um5zFQ24Au+SzZTNELjEx7busO";
-        private static readonly string Issuer = "SparkPoint_Server";
-        private static readonly string Audience = "SparkPoint_Client";
-        private static readonly int AccessTokenExpiryMinutes = 30;
-        private static readonly int RefreshTokenExpiryDays = 7;
-
         public static string GenerateAccessToken(User user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(SecretKey);
+            var key = Encoding.ASCII.GetBytes(AuthConstants.SecretKey);
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id),
@@ -30,9 +25,9 @@ namespace SparkPoint_Server.Helpers
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(AccessTokenExpiryMinutes),
-                Issuer = Issuer,
-                Audience = Audience,
+                Expires = DateTime.UtcNow.AddMinutes(AuthConstants.AccessTokenExpiryMinutes),
+                Issuer = AuthConstants.Issuer,
+                Audience = AuthConstants.Audience,
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
             var token = tokenHandler.CreateToken(tokenDescriptor);
@@ -47,15 +42,15 @@ namespace SparkPoint_Server.Helpers
         public static ClaimsPrincipal ValidateToken(string token, bool validateLifetime = true)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(SecretKey);
+            var key = Encoding.ASCII.GetBytes(AuthConstants.SecretKey);
             var parameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = new SymmetricSecurityKey(key),
                 ValidateIssuer = true,
-                ValidIssuer = Issuer,
+                ValidIssuer = AuthConstants.Issuer,
                 ValidateAudience = true,
-                ValidAudience = Audience,
+                ValidAudience = AuthConstants.Audience,
                 ValidateLifetime = validateLifetime,
                 ClockSkew = TimeSpan.Zero
             };
