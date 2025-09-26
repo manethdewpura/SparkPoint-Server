@@ -1,64 +1,49 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
 using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
 using System.Web.Http;
 using SparkPoint_Server.Models;
-using SparkPoint_Server.Helpers;
+using SparkPoint_Server.Services;
 using SparkPoint_Server.Attributes;
-using MongoDB.Driver;
+using SparkPoint_Server.Helpers;
+using SparkPoint_Server.Constants;
+using SparkPoint_Server.Enums;
 
 namespace SparkPoint_Server.Controllers
 {
     [RoutePrefix("api/users")]
     public class UsersController : ApiController
     {
-        private readonly IMongoCollection<User> _usersCollection;
-        private readonly IMongoCollection<ChargingStation> _stationsCollection;
+        private readonly UserService _userService;
 
         public UsersController()
         {
-            var dbContext = new MongoDbContext();
-            _usersCollection = dbContext.GetCollection<User>("Users");
-            _stationsCollection = dbContext.GetCollection<ChargingStation>("ChargingStations");
+            _userService = new UserService();
         }
 
         [HttpPost]
         [Route("admin/register")]
         public IHttpActionResult RegisterAdmin(RegisterModel model)
         {
-            if (_usersCollection.Find(u => u.Username == model.Username || u.Email == model.Email).Any())
-                return BadRequest("Username or email already exists.");
+            if (model == null)
+                return BadRequest(UserConstants.UserDataRequired);
 
             if (string.IsNullOrEmpty(model.Username))
-                return BadRequest("Username is required.");
+                return BadRequest(UserConstants.UsernameRequired);
 
             if (string.IsNullOrEmpty(model.Email))
-                return BadRequest("Email is required.");
+                return BadRequest(UserConstants.EmailRequired);
 
             if (string.IsNullOrEmpty(model.Password))
-                return BadRequest("Password is required.");
+                return BadRequest(UserConstants.PasswordRequired);
 
-            var adminUser = new User
+            var result = _userService.RegisterAdmin(model);
+            
+            if (!result.IsSuccess)
             {
-                Username = model.Username,
-                Email = model.Email,
-                FirstName = model.FirstName,
-                LastName = model.LastName,
-                PasswordHash = HashPassword(model.Password),
-                RoleId = 1,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+                return GetErrorResponse(result.Status, result.Message);
+            }
 
-            _usersCollection.InsertOne(adminUser);
-
-            return Ok(new { Message = "Admin registration successful.", UserId = adminUser.Id });
+            return Ok(new { Message = result.Message, UserId = ((dynamic)result.Data)?.UserId });
         }
 
         [HttpPut]
@@ -71,48 +56,17 @@ namespace SparkPoint_Server.Controllers
             if (string.IsNullOrEmpty(currentUserId))
                 return Unauthorized();
 
-            var currentUser = _usersCollection.Find(u => u.Id == currentUserId).FirstOrDefault();
-            if (currentUser == null)
-                return BadRequest("User not found.");
+            if (!_userService.CheckUserRole(currentUserId, ApplicationConstants.AdminRoleId))
+                return BadRequest(UserConstants.AdminOnlyEndpoint);
 
-            if (!currentUser.IsActive)
-                return BadRequest("Account is deactivated and cannot be updated.");
-
-            if (currentUser.RoleId != 1)
-                return BadRequest("This endpoint is only for Admin users.");
-
-            if (!string.IsNullOrEmpty(model.Email) && model.Email != currentUser.Email)
+            var result = _userService.UpdateProfile(currentUserId, model);
+            
+            if (!result.IsSuccess)
             {
-                if (_usersCollection.Find(u => u.Email == model.Email && u.Id != currentUserId).Any())
-                    return BadRequest("Email already exists.");
+                return GetErrorResponse(result.Status, result.Message);
             }
 
-            if (!string.IsNullOrEmpty(model.Username) && model.Username != currentUser.Username)
-            {
-                if (_usersCollection.Find(u => u.Username == model.Username && u.Id != currentUserId).Any())
-                    return BadRequest("Username already exists.");
-            }
-
-            var updateBuilder = Builders<User>.Update.Set(u => u.UpdatedAt, DateTime.UtcNow);
-
-            if (!string.IsNullOrEmpty(model.FirstName))
-                updateBuilder = updateBuilder.Set(u => u.FirstName, model.FirstName);
-
-            if (!string.IsNullOrEmpty(model.LastName))
-                updateBuilder = updateBuilder.Set(u => u.LastName, model.LastName);
-
-            if (!string.IsNullOrEmpty(model.Email))
-                updateBuilder = updateBuilder.Set(u => u.Email, model.Email);
-
-            if (!string.IsNullOrEmpty(model.Username))
-                updateBuilder = updateBuilder.Set(u => u.Username, model.Username);
-
-            if (!string.IsNullOrEmpty(model.Password))
-                updateBuilder = updateBuilder.Set(u => u.PasswordHash, HashPassword(model.Password));
-
-            _usersCollection.UpdateOne(u => u.Id == currentUserId, updateBuilder);
-
-            return Ok("Profile updated successfully.");
+            return Ok(result.Message);
         }
 
         [HttpGet]
@@ -125,28 +79,17 @@ namespace SparkPoint_Server.Controllers
             if (string.IsNullOrEmpty(currentUserId))
                 return Unauthorized();
 
-            var currentUser = _usersCollection.Find(u => u.Id == currentUserId).FirstOrDefault();
-            if (currentUser == null)
-                return BadRequest("User not found.");
+            if (!_userService.CheckUserRole(currentUserId, ApplicationConstants.AdminRoleId))
+                return BadRequest(UserConstants.AdminOnlyEndpoint);
 
-            if (currentUser.RoleId != 1)
-                return BadRequest("This endpoint is only for Admin users.");
-
-            var profile = new
+            var result = _userService.GetProfile(currentUserId);
+            
+            if (!result.IsSuccess)
             {
-                currentUser.Id,
-                currentUser.Username,
-                currentUser.Email,
-                currentUser.FirstName,
-                currentUser.LastName,
-                currentUser.RoleId,
-                RoleName = GetRoleName(currentUser.RoleId),
-                currentUser.IsActive,
-                currentUser.CreatedAt,
-                currentUser.UpdatedAt
-            };
+                return BadRequest(result.ErrorMessage);
+            }
 
-            return Ok(profile);
+            return Ok(result.UserProfile);
         }
 
         [HttpPost]
@@ -155,47 +98,28 @@ namespace SparkPoint_Server.Controllers
         public IHttpActionResult CreateStationUser(CreateStationUserModel model)
         {
             if (model == null)
-                return BadRequest("User data is required.");
+                return BadRequest(UserConstants.UserDataRequired);
 
             if (string.IsNullOrEmpty(model.Username))
-                return BadRequest("Username is required.");
+                return BadRequest(UserConstants.UsernameRequired);
 
             if (string.IsNullOrEmpty(model.Email))
-                return BadRequest("Email is required.");
+                return BadRequest(UserConstants.EmailRequired);
 
             if (string.IsNullOrEmpty(model.Password))
-                return BadRequest("Password is required.");
+                return BadRequest(UserConstants.PasswordRequired);
 
             if (string.IsNullOrEmpty(model.ChargingStationId))
-                return BadRequest("Charging station ID is required.");
+                return BadRequest(UserConstants.ChargingStationIdRequired);
 
-            if (_usersCollection.Find(u => u.Username == model.Username).Any())
-                return BadRequest("Username already exists.");
-
-            if (_usersCollection.Find(u => u.Email == model.Email).Any())
-                return BadRequest("Email already exists.");
-
-            var station = _stationsCollection.Find(s => s.Id == model.ChargingStationId).FirstOrDefault();
-            if (station == null)
-                return BadRequest("Charging station not found.");
-
-            var stationUser = new User
+            var result = _userService.CreateStationUser(model);
+            
+            if (!result.IsSuccess)
             {
-                Username = model.Username,
-                Email = model.Email,
-                FirstName = model.FirstName,
-                LastName = model.LastName,
-                RoleId = 2,
-                PasswordHash = HashPassword(model.Password),
-                ChargingStationId = model.ChargingStationId,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+                return GetErrorResponse(result.Status, result.Message);
+            }
 
-            _usersCollection.InsertOne(stationUser);
-
-            return Ok(new { Message = "Station user created successfully.", UserId = stationUser.Id });
+            return Ok(new { Message = result.Message, UserId = ((dynamic)result.Data)?.UserId });
         }
 
         [HttpGet]
@@ -203,29 +127,14 @@ namespace SparkPoint_Server.Controllers
         [RoleAuthorizeMiddleware("1")]
         public IHttpActionResult GetStationUserProfile(string userId)
         {
-            var stationUser = _usersCollection.Find(u => u.Id == userId).FirstOrDefault();
-            if (stationUser == null)
-                return BadRequest("User not found.");
+            var result = _userService.GetStationUserProfile(userId);
             
-            if (stationUser.RoleId != 2)
-                return BadRequest("User is not a station user.");
-
-            var profile = new
+            if (!result.IsSuccess)
             {
-                stationUser.Id,
-                stationUser.Username,
-                stationUser.Email,
-                stationUser.FirstName,
-                stationUser.LastName,
-                stationUser.RoleId,
-                RoleName = GetRoleName(stationUser.RoleId),
-                stationUser.ChargingStationId,
-                stationUser.IsActive,
-                stationUser.CreatedAt,
-                stationUser.UpdatedAt
-            };
+                return BadRequest(result.ErrorMessage);
+            }
 
-            return Ok(profile);
+            return Ok(result.UserProfile);
         }
 
         [HttpPut]
@@ -233,45 +142,14 @@ namespace SparkPoint_Server.Controllers
         [RoleAuthorizeMiddleware("1")]
         public IHttpActionResult UpdateStationUser(string userId, UserUpdateModel model)
         {
-            var stationUser = _usersCollection.Find(u => u.Id == userId).FirstOrDefault();
-            if (stationUser == null)
-                return BadRequest("User not found.");
-
-            if (stationUser.RoleId != 2)
-                return BadRequest("User is not a station user.");
-
-            if (!string.IsNullOrEmpty(model.Email) && model.Email != stationUser.Email)
+            var result = _userService.UpdateStationUser(userId, model);
+            
+            if (!result.IsSuccess)
             {
-                if (_usersCollection.Find(u => u.Email == model.Email && u.Id != userId).Any())
-                    return BadRequest("Email already exists.");
+                return GetErrorResponse(result.Status, result.Message);
             }
 
-            if (!string.IsNullOrEmpty(model.Username) && model.Username != stationUser.Username)
-            {
-                if (_usersCollection.Find(u => u.Username == model.Username && u.Id != userId).Any())
-                    return BadRequest("Username already exists.");
-            }
-
-            var updateBuilder = Builders<User>.Update.Set(u => u.UpdatedAt, DateTime.UtcNow);
-
-            if (!string.IsNullOrEmpty(model.FirstName))
-                updateBuilder = updateBuilder.Set(u => u.FirstName, model.FirstName);
-
-            if (!string.IsNullOrEmpty(model.LastName))
-                updateBuilder = updateBuilder.Set(u => u.LastName, model.LastName);
-
-            if (!string.IsNullOrEmpty(model.Email))
-                updateBuilder = updateBuilder.Set(u => u.Email, model.Email);
-
-            if (!string.IsNullOrEmpty(model.Username))
-                updateBuilder = updateBuilder.Set(u => u.Username, model.Username);
-
-            if (!string.IsNullOrEmpty(model.Password))
-                updateBuilder = updateBuilder.Set(u => u.PasswordHash, HashPassword(model.Password));
-
-            _usersCollection.UpdateOne(u => u.Id == userId, updateBuilder);
-
-            return Ok("Station user updated successfully.");
+            return Ok(result.Message);
         }
 
         private string GetCurrentUserId()
@@ -287,23 +165,27 @@ namespace SparkPoint_Server.Controllers
             return principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         }
 
-        private string HashPassword(string password)
+        private IHttpActionResult GetErrorResponse(UserOperationStatus status, string errorMessage)
         {
-            using (var sha = SHA256.Create())
+            switch (status)
             {
-                var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(password));
-                return Convert.ToBase64String(bytes);
-            }
-        }
-
-        private string GetRoleName(int roleId)
-        {
-            switch (roleId)
-            {
-                case 1: return "Admin";
-                case 2: return "Station User";
-                case 3: return "EV Owner";
-                default: return "Unknown";
+                case UserOperationStatus.UserNotFound:
+                    return BadRequest(errorMessage);
+                case UserOperationStatus.UsernameExists:
+                case UserOperationStatus.EmailExists:
+                    return BadRequest(errorMessage);
+                case UserOperationStatus.ValidationFailed:
+                    return BadRequest(errorMessage);
+                case UserOperationStatus.AccountDeactivated:
+                    return BadRequest(errorMessage);
+                case UserOperationStatus.ChargingStationNotFound:
+                    return BadRequest(errorMessage);
+                case UserOperationStatus.NotStationUser:
+                    return BadRequest(errorMessage);
+                case UserOperationStatus.NotAuthorized:
+                    return Unauthorized();
+                default:
+                    return BadRequest(errorMessage);
             }
         }
     }

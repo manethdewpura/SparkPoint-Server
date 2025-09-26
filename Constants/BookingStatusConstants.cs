@@ -1,8 +1,5 @@
 namespace SparkPoint_Server.Constants
 {
-    /// <summary>
-    /// Constants for booking statuses and slot management
-    /// </summary>
     public static class BookingStatusConstants
     {
         // Standard booking statuses
