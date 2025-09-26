@@ -425,30 +425,4 @@ namespace SparkPoint_Server.Controllers
         }
     }
 
-    // Model classes for request/response
-    public class BookingCreateModel
-    {
-        public string OwnerNIC { get; set; }
-        public string StationId { get; set; }
-        public DateTime ReservationTime { get; set; }
-    }
-
-    public class BookingUpdateModel
-    {
-        public string StationId { get; set; }
-        public DateTime? ReservationTime { get; set; }
-    }
-
-    public class BookingStatusUpdateModel
-    {
-        public string Status { get; set; }
-    }
-
-    public class BookingFilterModel
-    {
-        public string Status { get; set; }
-        public string StationId { get; set; }
-        public DateTime? FromDate { get; set; }
-        public DateTime? ToDate { get; set; }
-    }
 }
