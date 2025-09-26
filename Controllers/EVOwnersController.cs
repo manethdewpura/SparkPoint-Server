@@ -1,72 +1,36 @@
 using System;
-using System.Linq;
 using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
 using System.Web.Http;
 using SparkPoint_Server.Models;
-using SparkPoint_Server.Helpers;
+using SparkPoint_Server.Services;
 using SparkPoint_Server.Attributes;
-using MongoDB.Driver;
+using SparkPoint_Server.Helpers;
+using SparkPoint_Server.Enums;
 
 namespace SparkPoint_Server.Controllers
 {
     [RoutePrefix("api/evowners")]
     public class EVOwnersController : ApiController
     {
-        private readonly IMongoCollection<EVOwner> _evOwnersCollection;
-        private readonly IMongoCollection<User> _usersCollection;
+        private readonly EVOwnerService _evOwnerService;
 
         public EVOwnersController()
         {
-            var dbContext = new MongoDbContext();
-            _evOwnersCollection = dbContext.GetCollection<EVOwner>("EVOwners");
-            _usersCollection = dbContext.GetCollection<User>("Users");
+            _evOwnerService = new EVOwnerService();
         }
 
         [HttpPost]
         [Route("register")]
         public IHttpActionResult Register(EVOwnerRegisterModel model)
         {
-            if (_usersCollection.Find(u => u.Username == model.Username).Any())
-                return BadRequest("Username already exists.");
-
-            if (_usersCollection.Find(u => u.Email == model.Email).Any())
-                return BadRequest("Email already exists.");
-
-            if (_evOwnersCollection.Find(o => o.Phone == model.Phone).Any())
-                return BadRequest("Phone already exists.");
-
-            if (_evOwnersCollection.Find(o => o.NIC == model.NIC).Any())
-                return BadRequest("NIC already exists.");
-
-            var user = new User
+            var result = _evOwnerService.Register(model);
+            
+            if (!result.IsSuccess)
             {
-                Username = model.Username,
-                Email = model.Email,
-                FirstName = model.FirstName,
-                LastName = model.LastName,
-                PasswordHash = HashPassword(model.Password),
-                RoleId = 3,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            
-            _usersCollection.InsertOne(user);
+                return GetErrorResponse(result.Status, result.Message);
+            }
 
-            var evOwner = new EVOwner
-            {
-                NIC = model.NIC,
-                Phone = model.Phone,
-                UserId = user.Id,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            
-            _evOwnersCollection.InsertOne(evOwner);
-            
-            return Ok("EV Owner registration successful.");
+            return Ok(result.Message);
         }
 
         [HttpPut]
@@ -79,53 +43,14 @@ namespace SparkPoint_Server.Controllers
             if (string.IsNullOrEmpty(currentUserId))
                 return Unauthorized();
 
-            var currentUser = _usersCollection.Find(u => u.Id == currentUserId).FirstOrDefault();
-            var currentEVOwner = _evOwnersCollection.Find(o => o.UserId == currentUserId).FirstOrDefault();
-
-            if (currentUser == null || currentEVOwner == null)
-                return BadRequest("User not found.");
-
-            if (!currentUser.IsActive)
-                return BadRequest("Account is deactivated and cannot be updated.");
-
-            if (!string.IsNullOrEmpty(model.Email) && model.Email != currentUser.Email)
+            var result = _evOwnerService.UpdateProfile(currentUserId, model);
+            
+            if (!result.IsSuccess)
             {
-                if (_usersCollection.Find(u => u.Email == model.Email && u.Id != currentUserId).Any())
-                    return BadRequest("Email already exists.");
+                return GetErrorResponse(result.Status, result.Message);
             }
 
-            if (!string.IsNullOrEmpty(model.Phone) && model.Phone != currentEVOwner.Phone)
-            {
-                if (_evOwnersCollection.Find(o => o.Phone == model.Phone && o.NIC != currentEVOwner.NIC).Any())
-                    return BadRequest("Phone already exists.");
-            }
-
-            var userUpdate = Builders<User>.Update
-                .Set(u => u.UpdatedAt, DateTime.UtcNow);
-
-            if (!string.IsNullOrEmpty(model.FirstName))
-                userUpdate = userUpdate.Set(u => u.FirstName, model.FirstName);
-            
-            if (!string.IsNullOrEmpty(model.LastName))
-                userUpdate = userUpdate.Set(u => u.LastName, model.LastName);
-            
-            if (!string.IsNullOrEmpty(model.Email))
-                userUpdate = userUpdate.Set(u => u.Email, model.Email);
-
-            if (!string.IsNullOrEmpty(model.Password))
-                userUpdate = userUpdate.Set(u => u.PasswordHash, HashPassword(model.Password));
-
-            _usersCollection.UpdateOne(u => u.Id == currentUserId, userUpdate);
-
-            var evOwnerUpdate = Builders<EVOwner>.Update
-                .Set(o => o.UpdatedAt, DateTime.UtcNow);
-
-            if (!string.IsNullOrEmpty(model.Phone))
-                evOwnerUpdate = evOwnerUpdate.Set(o => o.Phone, model.Phone);
-
-            _evOwnersCollection.UpdateOne(o => o.UserId == currentUserId, evOwnerUpdate);
-
-            return Ok("Profile updated successfully.");
+            return Ok(result.Message);
         }
 
         [HttpPut]
@@ -138,20 +63,14 @@ namespace SparkPoint_Server.Controllers
             if (string.IsNullOrEmpty(currentUserId))
                 return Unauthorized();
 
-            var currentUser = _usersCollection.Find(u => u.Id == currentUserId).FirstOrDefault();
-            if (currentUser == null)
-                return BadRequest("User not found.");
+            var result = _evOwnerService.DeactivateAccount(currentUserId);
+            
+            if (!result.IsSuccess)
+            {
+                return GetErrorResponse(result.Status, result.Message);
+            }
 
-            if (!currentUser.IsActive)
-                return BadRequest("Account is already deactivated.");
-
-            var update = Builders<User>.Update
-                .Set(u => u.IsActive, false)
-                .Set(u => u.UpdatedAt, DateTime.UtcNow);
-
-            _usersCollection.UpdateOne(u => u.Id == currentUserId, update);
-
-            return Ok("Account deactivated successfully.");
+            return Ok(result.Message);
         }
 
         [HttpPut]
@@ -160,24 +79,14 @@ namespace SparkPoint_Server.Controllers
         [OwnAccountMiddleware("nic")]
         public IHttpActionResult ReactivateAccount(string nic)
         {
-            var evOwner = _evOwnersCollection.Find(o => o.NIC == nic).FirstOrDefault();
-            if (evOwner == null)
-                return BadRequest("EV Owner not found.");
+            var result = _evOwnerService.ReactivateAccount(nic);
+            
+            if (!result.IsSuccess)
+            {
+                return GetErrorResponse(result.Status, result.Message);
+            }
 
-            var user = _usersCollection.Find(u => u.Id == evOwner.UserId).FirstOrDefault();
-            if (user == null)
-                return BadRequest("User not found.");
-
-            if (user.IsActive)
-                return BadRequest("Account is already active.");
-
-            var update = Builders<User>.Update
-                .Set(u => u.IsActive, true)
-                .Set(u => u.UpdatedAt, DateTime.UtcNow);
-
-            _usersCollection.UpdateOne(u => u.Id == evOwner.UserId, update);
-
-            return Ok("Account reactivated successfully.");
+            return Ok(result.Message);
         }
 
         [HttpGet]
@@ -190,27 +99,14 @@ namespace SparkPoint_Server.Controllers
             if (string.IsNullOrEmpty(currentUserId))
                 return Unauthorized();
 
-            var currentUser = _usersCollection.Find(u => u.Id == currentUserId).FirstOrDefault();
-            var currentEVOwner = _evOwnersCollection.Find(o => o.UserId == currentUserId).FirstOrDefault();
-
-            if (currentUser == null || currentEVOwner == null)
-                return BadRequest("User not found.");
-
-            var profile = new
+            var result = _evOwnerService.GetProfile(currentUserId);
+            
+            if (!result.IsSuccess)
             {
-                currentUser.Id,
-                currentUser.Username,
-                currentUser.Email,
-                currentUser.FirstName,
-                currentUser.LastName,
-                currentUser.IsActive,
-                currentEVOwner.NIC,
-                currentEVOwner.Phone,
-                currentUser.CreatedAt,
-                currentUser.UpdatedAt
-            };
+                return BadRequest(result.ErrorMessage);
+            }
 
-            return Ok(profile);
+            return Ok(result.UserProfile);
         }
 
         [HttpGet]
@@ -219,29 +115,14 @@ namespace SparkPoint_Server.Controllers
         [OwnAccountMiddleware("nic")]
         public IHttpActionResult GetProfileByNic(string nic)
         {
-            var evOwner = _evOwnersCollection.Find(o => o.NIC == nic).FirstOrDefault();
-            if (evOwner == null)
-                return BadRequest("EV Owner not found.");
-
-            var user = _usersCollection.Find(u => u.Id == evOwner.UserId).FirstOrDefault();
-            if (user == null)
-                return BadRequest("User not found.");
-
-            var profile = new
+            var result = _evOwnerService.GetProfileByNIC(nic);
+            
+            if (!result.IsSuccess)
             {
-                user.Id,
-                user.Username,
-                user.Email,
-                user.FirstName,
-                user.LastName,
-                user.IsActive,
-                evOwner.NIC,
-                evOwner.Phone,
-                user.CreatedAt,
-                user.UpdatedAt
-            };
+                return BadRequest(result.ErrorMessage);
+            }
 
-            return Ok(profile);
+            return Ok(result.UserProfile);
         }
 
         private string GetCurrentUserId()
@@ -257,12 +138,28 @@ namespace SparkPoint_Server.Controllers
             return principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         }
 
-        private string HashPassword(string password)
+        private IHttpActionResult GetErrorResponse(EVOwnerOperationStatus status, string errorMessage)
         {
-            using (var sha = SHA256.Create())
+            switch (status)
             {
-                var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(password));
-                return Convert.ToBase64String(bytes);
+                case EVOwnerOperationStatus.UserNotFound:
+                case EVOwnerOperationStatus.EVOwnerNotFound:
+                    return BadRequest(errorMessage);
+                case EVOwnerOperationStatus.UsernameExists:
+                case EVOwnerOperationStatus.EmailExists:
+                case EVOwnerOperationStatus.PhoneExists:
+                case EVOwnerOperationStatus.NICExists:
+                    return BadRequest(errorMessage);
+                case EVOwnerOperationStatus.ValidationFailed:
+                    return BadRequest(errorMessage);
+                case EVOwnerOperationStatus.AccountDeactivated:
+                case EVOwnerOperationStatus.AccountAlreadyDeactivated:
+                case EVOwnerOperationStatus.AccountAlreadyActive:
+                    return BadRequest(errorMessage);
+                case EVOwnerOperationStatus.NotAuthorized:
+                    return Unauthorized();
+                default:
+                    return BadRequest(errorMessage);
             }
         }
     }
