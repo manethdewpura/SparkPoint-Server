@@ -7,6 +7,8 @@ using System.Web.Http;
 using SparkPoint_Server.Models;
 using SparkPoint_Server.Helpers;
 using SparkPoint_Server.Services;
+using SparkPoint_Server.Constants;
+using SparkPoint_Server.Enums;
 using MongoDB.Driver;
 
 namespace SparkPoint_Server.Controllers
@@ -27,18 +29,14 @@ namespace SparkPoint_Server.Controllers
         {
             if (model == null || string.IsNullOrEmpty(model.Username) || string.IsNullOrEmpty(model.Password))
             {
-                return BadRequest("Username and password are required");
+                return BadRequest(AuthConstants.UsernamePasswordRequired);
             }
 
             var result = _authService.AuthenticateUser(model.Username, model.Password);
             
             if (!result.IsSuccess)
             {
-                if (result.ErrorMessage.Contains("Invalid username or password"))
-                {
-                    return Unauthorized();
-                }
-                return BadRequest(result.ErrorMessage);
+                return GetErrorResponse(result.Status, result.ErrorMessage);
             }
 
             return Ok(new
@@ -55,18 +53,14 @@ namespace SparkPoint_Server.Controllers
         {
             if (model == null || string.IsNullOrEmpty(model.UserId) || string.IsNullOrEmpty(model.RefreshToken))
             {
-                return BadRequest("UserId and RefreshToken are required");
+                return BadRequest(AuthConstants.UserIdRefreshTokenRequired);
             }
 
             var result = _authService.RefreshToken(model.UserId, model.RefreshToken);
             
             if (!result.IsSuccess)
             {
-                if (result.ErrorMessage.Contains("not found") || result.ErrorMessage.Contains("Invalid"))
-                {
-                    return Unauthorized();
-                }
-                return BadRequest(result.ErrorMessage);
+                return GetErrorResponse(result.Status, result.ErrorMessage);
             }
 
             return Ok(new 
@@ -74,6 +68,36 @@ namespace SparkPoint_Server.Controllers
                 accessToken = result.AccessToken, 
                 refreshToken = result.RefreshToken 
             });
+        }
+
+        private IHttpActionResult GetErrorResponse(AuthenticationStatus status, string errorMessage)
+        {
+            switch (status)
+            {
+                case AuthenticationStatus.InvalidCredentials:
+                    return Unauthorized();
+                case AuthenticationStatus.UserInactive:
+                case AuthenticationStatus.EVOwnerDeactivated:
+                    return BadRequest(errorMessage);
+                case AuthenticationStatus.UserNotFound:
+                    return Unauthorized();
+                default:
+                    return BadRequest(errorMessage);
+            }
+        }
+
+        private IHttpActionResult GetErrorResponse(TokenRefreshStatus status, string errorMessage)
+        {
+            switch (status)
+            {
+                case TokenRefreshStatus.UserNotFound:
+                case TokenRefreshStatus.InvalidRefreshToken:
+                    return Unauthorized();
+                case TokenRefreshStatus.UserInactive:
+                    return BadRequest(errorMessage);
+                default:
+                    return BadRequest(errorMessage);
+            }
         }
     }
 }

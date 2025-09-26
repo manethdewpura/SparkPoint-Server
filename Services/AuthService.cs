@@ -4,6 +4,8 @@ using MongoDB.Driver;
 using SparkPoint_Server.Models;
 using SparkPoint_Server.Helpers;
 using SparkPoint_Server.Utils;
+using SparkPoint_Server.Constants;
+using SparkPoint_Server.Enums;
 
 namespace SparkPoint_Server.Services
 {
@@ -16,9 +18,9 @@ namespace SparkPoint_Server.Services
         public AuthService()
         {
             var dbContext = new MongoDbContext();
-            _usersCollection = dbContext.GetCollection<User>("Users");
-            _refreshTokensCollection = dbContext.GetCollection<RefreshTokenEntry>("RefreshTokens");
-            _evOwnersCollection = dbContext.GetCollection<EVOwner>("EVOwners");
+            _usersCollection = dbContext.GetCollection<User>(AuthConstants.UsersCollection);
+            _refreshTokensCollection = dbContext.GetCollection<RefreshTokenEntry>(AuthConstants.RefreshTokensCollection);
+            _evOwnersCollection = dbContext.GetCollection<EVOwner>(AuthConstants.EVOwnersCollection);
         }
 
         public AuthenticationResult AuthenticateUser(string username, string password)
@@ -27,14 +29,14 @@ namespace SparkPoint_Server.Services
             var user = _usersCollection.Find(u => u.Username == username).FirstOrDefault();
             if (user == null || !PasswordUtils.VerifyPassword(password, user.PasswordHash))
             {
-                return AuthenticationResult.Failed("Invalid username or password");
+                return AuthenticationResult.Failed(AuthenticationStatus.InvalidCredentials);
             }
 
             // Check if user is active
             if (!user.IsActive)
             {
-                var errorMessage = GetInactiveUserMessage(user);
-                return AuthenticationResult.Failed(errorMessage);
+                var status = GetInactiveUserStatus(user);
+                return AuthenticationResult.Failed(status);
             }
 
             // Generate tokens
@@ -56,7 +58,7 @@ namespace SparkPoint_Server.Services
             var user = _usersCollection.Find(u => u.Id == userId).FirstOrDefault();
             if (user == null)
             {
-                return TokenRefreshResult.Failed("User not found");
+                return TokenRefreshResult.Failed(TokenRefreshStatus.UserNotFound);
             }
 
             // Validate refresh token
@@ -66,13 +68,13 @@ namespace SparkPoint_Server.Services
 
             if (refreshEntry == null)
             {
-                return TokenRefreshResult.Failed("Invalid refresh token");
+                return TokenRefreshResult.Failed(TokenRefreshStatus.InvalidRefreshToken);
             }
 
             // Check if user is still active
             if (!user.IsActive)
             {
-                return TokenRefreshResult.Failed("User account is inactive");
+                return TokenRefreshResult.Failed(TokenRefreshStatus.UserInactive);
             }
 
             // Generate new tokens
@@ -101,19 +103,22 @@ namespace SparkPoint_Server.Services
             );
         }
 
-        private string GetInactiveUserMessage(User user)
+        private AuthenticationStatus GetInactiveUserStatus(User user)
         {
-            var evOwner = _evOwnersCollection.Find(o => o.UserId == user.Id).FirstOrDefault();
-            if (evOwner != null)
+            if (AuthUtils.IsEVOwner(user.RoleId))
             {
-                return "Your EV Owner account has been deactivated. Please contact a back-office officer for reactivation.";
+                var evOwner = _evOwnersCollection.Find(o => o.UserId == user.Id).FirstOrDefault();
+                if (evOwner != null)
+                {
+                    return AuthenticationStatus.EVOwnerDeactivated;
+                }
             }
-            return "User account is inactive.";
+            return AuthenticationStatus.UserInactive;
         }
 
         private object GetUserInfoForResponse(User user)
         {
-            if (user.RoleId == 3)
+            if (AuthUtils.IsEVOwner(user.RoleId))
             {
                 var evOwner = _evOwnersCollection.Find(o => o.UserId == user.Id).FirstOrDefault();
                 if (evOwner != null)
@@ -123,7 +128,8 @@ namespace SparkPoint_Server.Services
                         user.Id, 
                         user.Username, 
                         user.Email, 
-                        RoleId = user.RoleId, 
+                        RoleId = user.RoleId,
+                        RoleName = AuthUtils.GetRoleName(user.RoleId),
                         NIC = evOwner.NIC 
                     };
                 }
@@ -134,67 +140,8 @@ namespace SparkPoint_Server.Services
                 user.Id, 
                 user.Username, 
                 user.Email, 
-                RoleId = user.RoleId 
-            };
-        }
-    }
-
-    public class AuthenticationResult
-    {
-        public bool IsSuccess { get; private set; }
-        public string ErrorMessage { get; private set; }
-        public string AccessToken { get; private set; }
-        public string RefreshToken { get; private set; }
-        public object UserInfo { get; private set; }
-
-        private AuthenticationResult() { }
-
-        public static AuthenticationResult Success(string accessToken, string refreshToken, object userInfo)
-        {
-            return new AuthenticationResult
-            {
-                IsSuccess = true,
-                AccessToken = accessToken,
-                RefreshToken = refreshToken,
-                UserInfo = userInfo
-            };
-        }
-
-        public static AuthenticationResult Failed(string errorMessage)
-        {
-            return new AuthenticationResult
-            {
-                IsSuccess = false,
-                ErrorMessage = errorMessage
-            };
-        }
-    }
-
-    public class TokenRefreshResult
-    {
-        public bool IsSuccess { get; private set; }
-        public string ErrorMessage { get; private set; }
-        public string AccessToken { get; private set; }
-        public string RefreshToken { get; private set; }
-
-        private TokenRefreshResult() { }
-
-        public static TokenRefreshResult Success(string accessToken, string refreshToken)
-        {
-            return new TokenRefreshResult
-            {
-                IsSuccess = true,
-                AccessToken = accessToken,
-                RefreshToken = refreshToken
-            };
-        }
-
-        public static TokenRefreshResult Failed(string errorMessage)
-        {
-            return new TokenRefreshResult
-            {
-                IsSuccess = false,
-                ErrorMessage = errorMessage
+                RoleId = user.RoleId,
+                RoleName = AuthUtils.GetRoleName(user.RoleId)
             };
         }
     }

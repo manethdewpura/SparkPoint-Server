@@ -212,8 +212,10 @@
   <ItemGroup>
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Constants\ApplicationConstants.cs" />
+    <Compile Include="Constants\AuthConstants.cs" />
     <Compile Include="Constants\BookingStatusConstants.cs" />
     <Compile Include="Constants\ValidationMessages.cs" />
+    <Compile Include="Enums\AuthEnums.cs" />
     <Compile Include="Enums\BookingSortField.cs" />
     <Compile Include="Enums\CommonEnums.cs" />
     <Compile Include="Helpers\BookingAuthorizationHelper.cs" />
@@ -233,6 +235,7 @@
     </Compile>
     <Compile Include="Helpers\JwtHelper.cs" />
     <Compile Include="Models\AuthModels.cs" />
+    <Compile Include="Models\AuthResultModels.cs" />
     <Compile Include="Models\BookingModels.cs" />
     <Compile Include="Models\ChargingStationModels.cs" />
     <Compile Include="Models\EVOwnerModels.cs" />
@@ -240,6 +243,7 @@
     <Compile Include="Models\UserModels.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\AuthService.cs" />
+    <Compile Include="Utils\AuthUtils.cs" />
     <Compile Include="Utils\BookingFilterUtils.cs" />
     <Compile Include="Utils\PasswordUtils.cs" />
     <Compile Include="Services\BookingService.cs" />
