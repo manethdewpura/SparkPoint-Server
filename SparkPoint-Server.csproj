@@ -211,6 +211,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="App_Start\WebApiConfig.cs" />
+    <Compile Include="Constants\ApplicationConstants.cs" />
+    <Compile Include="Constants\BookingStatusConstants.cs" />
+    <Compile Include="Constants\ValidationMessages.cs" />
+    <Compile Include="Enums\BookingSortField.cs" />
+    <Compile Include="Enums\CommonEnums.cs" />
+    <Compile Include="Helpers\BookingAuthorizationHelper.cs" />
+    <Compile Include="Helpers\BookingValidationHelper.cs" />
+    <Compile Include="Helpers\UserContextHelper.cs" />
     <Compile Include="Middleware\OwnAccountMiddleware.cs" />
     <Compile Include="Middleware\RoleAuthorizeMiddleware.cs" />
     <Compile Include="Controllers\AuthController.cs" />
@@ -232,9 +240,9 @@
     <Compile Include="Models\UserModels.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\AuthService.cs" />
+    <Compile Include="Utils\BookingFilterUtils.cs" />
     <Compile Include="Utils\PasswordUtils.cs" />
     <Compile Include="Services\BookingService.cs" />
-    <Compile Include="Utils\BookingStatusConstants.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
