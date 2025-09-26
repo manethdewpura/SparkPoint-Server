@@ -237,7 +237,6 @@
     <Compile Include="Utils\BookingStatusConstants.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Booking-Slot-Management.md" />
     <None Include="packages.config" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
