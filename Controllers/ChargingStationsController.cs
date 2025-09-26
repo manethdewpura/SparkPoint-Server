@@ -1,30 +1,22 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
 using System.Web.Http;
 using SparkPoint_Server.Models;
-using SparkPoint_Server.Helpers;
+using SparkPoint_Server.Services;
 using SparkPoint_Server.Attributes;
-using MongoDB.Driver;
+using SparkPoint_Server.Constants;
+using SparkPoint_Server.Enums;
+using SparkPoint_Server.Utils;
 
 namespace SparkPoint_Server.Controllers
 {
     [RoutePrefix("api/stations")]
     public class ChargingStationsController : ApiController
     {
-        private readonly IMongoCollection<ChargingStation> _stationsCollection;
-        private readonly IMongoCollection<User> _usersCollection;
-        private readonly IMongoCollection<Booking> _bookingsCollection;
+        private readonly ChargingStationService _chargingStationService;
 
         public ChargingStationsController()
         {
-            var dbContext = new MongoDbContext();
-            _stationsCollection = dbContext.GetCollection<ChargingStation>("ChargingStations");
-            _usersCollection = dbContext.GetCollection<User>("Users");
-            _bookingsCollection = dbContext.GetCollection<Booking>("Bookings");
+            _chargingStationService = new ChargingStationService();
         }
 
         [HttpPost]
@@ -32,32 +24,14 @@ namespace SparkPoint_Server.Controllers
         [RoleAuthorizeMiddleware("1")]
         public IHttpActionResult CreateStation(StationCreateModel model)
         {
-            if (model == null)
-                return BadRequest("Station data is required.");
-
-            if (string.IsNullOrEmpty(model.Location))
-                return BadRequest("Location is required.");
-
-            if (string.IsNullOrEmpty(model.Type))
-                return BadRequest("Type is required.");
-
-            if (model.TotalSlots <= 0)
-                return BadRequest("Total slots must be greater than 0.");
-
-            var station = new ChargingStation
+            var result = _chargingStationService.CreateStation(model);
+            
+            if (!result.IsSuccess)
             {
-                Location = model.Location,
-                Type = model.Type,
-                TotalSlots = model.TotalSlots,
-                AvailableSlots = model.TotalSlots,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+                return GetErrorResponse(result.Status, result.Message);
+            }
 
-            _stationsCollection.InsertOne(station);
-
-            return Ok(new { Message = "Charging station created successfully.", StationId = station.Id });
+            return Ok(new { Message = result.Message, StationId = ((dynamic)result.Data)?.StationId });
         }
 
         [HttpGet]
@@ -65,29 +39,14 @@ namespace SparkPoint_Server.Controllers
         [RoleAuthorizeMiddleware("1")]
         public IHttpActionResult GetStations([FromUri] StationFilterModel filter = null)
         {
-            var filterBuilder = Builders<ChargingStation>.Filter.Empty;
-
-            if (filter != null)
+            var result = _chargingStationService.GetStations(filter);
+            
+            if (!result.IsSuccess)
             {
-                if (filter.IsActive.HasValue)
-                {
-                    var activeFilter = Builders<ChargingStation>.Filter.Eq(s => s.IsActive, filter.IsActive.Value);
-                    filterBuilder = Builders<ChargingStation>.Filter.And(filterBuilder, activeFilter);
-                }
-
-                if (!string.IsNullOrEmpty(filter.SearchTerm))
-                {
-                    var searchFilter = Builders<ChargingStation>.Filter.Or(
-                        Builders<ChargingStation>.Filter.Regex(s => s.Location, new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i")),
-                        Builders<ChargingStation>.Filter.Regex(s => s.Type, new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i"))
-                    );
-                    filterBuilder = Builders<ChargingStation>.Filter.And(filterBuilder, searchFilter);
-                }
+                return BadRequest(result.ErrorMessage);
             }
 
-            var stations = _stationsCollection.Find(filterBuilder).ToList();
-
-            return Ok(stations);
+            return Ok(result.Stations);
         }
 
         [HttpGet]
@@ -95,33 +54,22 @@ namespace SparkPoint_Server.Controllers
         [RoleAuthorizeMiddleware("1")]
         public IHttpActionResult GetStation(string stationId)
         {
-            var station = _stationsCollection.Find(s => s.Id == stationId).FirstOrDefault();
-            if (station == null)
-                return BadRequest("Charging station not found.");
-
-            var stationUsers = _usersCollection.Find(u => u.ChargingStationId == stationId && u.RoleId == 2).ToList();
-
-            var userProfiles = stationUsers.Select(user => new
+            var result = _chargingStationService.GetStation(stationId);
+            
+            if (!result.IsSuccess)
             {
-                user.Id,
-                user.Username,
-                user.Email,
-                user.FirstName,
-                user.LastName,
-                user.RoleId,
-                RoleName = "Station User",
-                user.IsActive,
-                user.CreatedAt,
-                user.UpdatedAt
-            }).ToList();
+                return BadRequest(result.ErrorMessage);
+            }
 
-            var response = new
+            var response = ChargingStationUtils.CreateDetailedStationResponse(result.Station, null);
+            // Replace null with actual station users from result
+            var responseWithUsers = new
             {
-                Station = station,
-                StationUsers = userProfiles
+                Station = result.Station,
+                StationUsers = result.StationUsers
             };
 
-            return Ok(response);
+            return Ok(responseWithUsers);
         }
 
         [HttpPut]
@@ -129,35 +77,14 @@ namespace SparkPoint_Server.Controllers
         [RoleAuthorizeMiddleware("1")]
         public IHttpActionResult UpdateStation(string stationId, StationUpdateModel model)
         {
-            if (model == null)
-                return BadRequest("Update data is required.");
-
-            var station = _stationsCollection.Find(s => s.Id == stationId).FirstOrDefault();
-            if (station == null)
-                return BadRequest("Charging station not found.");
-
-            var updateBuilder = Builders<ChargingStation>.Update.Set(s => s.UpdatedAt, DateTime.UtcNow);
-
-            if (!string.IsNullOrEmpty(model.Location))
-                updateBuilder = updateBuilder.Set(s => s.Location, model.Location);
-
-            if (!string.IsNullOrEmpty(model.Type))
-                updateBuilder = updateBuilder.Set(s => s.Type, model.Type);
-
-            if (model.TotalSlots.HasValue && model.TotalSlots.Value > 0)
+            var result = _chargingStationService.UpdateStation(stationId, model);
+            
+            if (!result.IsSuccess)
             {
-                var currentAvailable = station.AvailableSlots;
-                var currentTotal = station.TotalSlots;
-                var newTotal = model.TotalSlots.Value;
-                var newAvailable = Math.Max(0, Math.Min(newTotal, currentAvailable + (newTotal - currentTotal)));
-
-                updateBuilder = updateBuilder.Set(s => s.TotalSlots, newTotal);
-                updateBuilder = updateBuilder.Set(s => s.AvailableSlots, newAvailable);
+                return GetErrorResponse(result.Status, result.Message);
             }
 
-            _stationsCollection.UpdateOne(s => s.Id == stationId, updateBuilder);
-
-            return Ok("Charging station updated successfully.");
+            return Ok(result.Message);
         }
 
         [HttpPut]
@@ -165,20 +92,14 @@ namespace SparkPoint_Server.Controllers
         [RoleAuthorizeMiddleware("1")]
         public IHttpActionResult ActivateStation(string stationId)
         {
-            var station = _stationsCollection.Find(s => s.Id == stationId).FirstOrDefault();
-            if (station == null)
-                return BadRequest("Charging station not found.");
+            var result = _chargingStationService.ActivateStation(stationId);
+            
+            if (!result.IsSuccess)
+            {
+                return GetErrorResponse(result.Status, result.Message);
+            }
 
-            if (station.IsActive)
-                return BadRequest("Charging station is already active.");
-
-            var update = Builders<ChargingStation>.Update
-                .Set(s => s.IsActive, true)
-                .Set(s => s.UpdatedAt, DateTime.UtcNow);
-
-            _stationsCollection.UpdateOne(s => s.Id == stationId, update);
-
-            return Ok("Charging station activated successfully.");
+            return Ok(result.Message);
         }
 
         [HttpPut]
@@ -186,33 +107,54 @@ namespace SparkPoint_Server.Controllers
         [RoleAuthorizeMiddleware("1")]
         public IHttpActionResult DeactivateStation(string stationId)
         {
-            var station = _stationsCollection.Find(s => s.Id == stationId).FirstOrDefault();
-            if (station == null)
-                return BadRequest("Charging station not found.");
-
-            if (!station.IsActive)
-                return BadRequest("Charging station is already deactivated.");
-
-            var activeBookingsFilter = Builders<Booking>.Filter.And(
-                Builders<Booking>.Filter.Eq(b => b.StationId, stationId),
-                Builders<Booking>.Filter.Not(
-                    Builders<Booking>.Filter.In(b => b.Status, new[] { "Cancelled", "Completed" })
-                )
-            );
-
-            var activeBookingsCount = _bookingsCollection.CountDocuments(activeBookingsFilter);
-            if (activeBookingsCount > 0)
+            var result = _chargingStationService.DeactivateStation(stationId);
+            
+            if (!result.IsSuccess)
             {
-                return BadRequest("Cannot deactivate station. There are active bookings for this station.");
+                return GetErrorResponse(result.Status, result.Message);
             }
 
-            var update = Builders<ChargingStation>.Update
-                .Set(s => s.IsActive, false)
-                .Set(s => s.UpdatedAt, DateTime.UtcNow);
+            return Ok(result.Message);
+        }
 
-            _stationsCollection.UpdateOne(s => s.Id == stationId, update);
+        [HttpGet]
+        [Route("{stationId}/statistics")]
+        [RoleAuthorizeMiddleware("1")]
+        public IHttpActionResult GetStationStatistics(string stationId)
+        {
+            var statistics = _chargingStationService.GetStationStatistics(stationId);
+            
+            if (statistics == null)
+            {
+                return BadRequest(ChargingStationConstants.StationNotFound);
+            }
 
-            return Ok("Charging station deactivated successfully.");
+            return Ok(statistics);
+        }
+
+        [HttpGet]
+        [Route("types")]
+        public IHttpActionResult GetValidStationTypes()
+        {
+            var types = ChargingStationUtils.GetValidStationTypes();
+            return Ok(types);
+        }
+
+        private IHttpActionResult GetErrorResponse(StationOperationStatus status, string errorMessage)
+        {
+            switch (status)
+            {
+                case StationOperationStatus.StationNotFound:
+                    return NotFound();
+                case StationOperationStatus.ValidationFailed:
+                    return BadRequest(errorMessage);
+                case StationOperationStatus.AlreadyInState:
+                    return BadRequest(errorMessage);
+                case StationOperationStatus.HasActiveBookings:
+                    return Conflict();
+                default:
+                    return BadRequest(errorMessage);
+            }
         }
     }
 }

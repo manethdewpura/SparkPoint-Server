@@ -7,7 +7,7 @@ using SparkPoint_Server.Helpers;
 using SparkPoint_Server.Constants;
 
 namespace SparkPoint_Server.Services
-
+{ 
     public class BookingService
     {
         private readonly IMongoCollection<Booking> _bookingsCollection;
@@ -532,9 +532,6 @@ namespace SparkPoint_Server.Services
         }
     }
 
-    /// <summary>
-    /// Result of booking status update operation
-    /// </summary>
     public class BookingStatusUpdateResult
     {
         public bool IsSuccess { get; private set; }
