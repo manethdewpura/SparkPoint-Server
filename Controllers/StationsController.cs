@@ -29,7 +29,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpPost]
         [Route("")]
-        [RoleAuthorizeMiddleware("1")]
+        [AdminOnly]
         public IHttpActionResult CreateStation(StationCreateModel model)
         {
             if (model == null)
@@ -62,7 +62,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpGet]
         [Route("")]
-        [RoleAuthorizeMiddleware("1")]
+        [AdminOnly]
         public IHttpActionResult GetStations([FromUri] StationFilterModel filter = null)
         {
             var filterBuilder = Builders<ChargingStation>.Filter.Empty;
@@ -92,7 +92,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpGet]
         [Route("{stationId}")]
-        [RoleAuthorizeMiddleware("1")]
+        [AdminOnly]
         public IHttpActionResult GetStation(string stationId)
         {
             var station = _stationsCollection.Find(s => s.Id == stationId).FirstOrDefault();
@@ -126,7 +126,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpPut]
         [Route("{stationId}")]
-        [RoleAuthorizeMiddleware("1")]
+        [AdminOnly]
         public IHttpActionResult UpdateStation(string stationId, StationUpdateModel model)
         {
             if (model == null)
@@ -162,7 +162,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpPut]
         [Route("activate/{stationId}")]
-        [RoleAuthorizeMiddleware("1")]
+        [AdminOnly]
         public IHttpActionResult ActivateStation(string stationId)
         {
             var station = _stationsCollection.Find(s => s.Id == stationId).FirstOrDefault();
@@ -183,7 +183,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpPut]
         [Route("deactivate/{stationId}")]
-        [RoleAuthorizeMiddleware("1")]
+        [AdminOnly]
         public IHttpActionResult DeactivateStation(string stationId)
         {
             var station = _stationsCollection.Find(s => s.Id == stationId).FirstOrDefault();

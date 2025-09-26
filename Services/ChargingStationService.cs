@@ -10,9 +10,7 @@ using SparkPoint_Server.Enums;
 
 namespace SparkPoint_Server.Services
 {
-    /// <summary>
-    /// Service class for charging station operations
-    /// </summary>
+
     public class ChargingStationService
     {
         private readonly IMongoCollection<ChargingStation> _stationsCollection;
@@ -27,11 +25,6 @@ namespace SparkPoint_Server.Services
             _bookingsCollection = dbContext.GetCollection<Booking>(ChargingStationConstants.BookingsCollection);
         }
 
-        /// <summary>
-        /// Creates a new charging station
-        /// </summary>
-        /// <param name="model">The station creation model</param>
-        /// <returns>Result of the creation operation</returns>
         public StationOperationResult CreateStation(StationCreateModel model)
         {
             // Validate the model
@@ -68,11 +61,6 @@ namespace SparkPoint_Server.Services
             }
         }
 
-        /// <summary>
-        /// Gets all charging stations with optional filtering
-        /// </summary>
-        /// <param name="filter">Optional filter criteria</param>
-        /// <returns>Result of the query operation</returns>
         public StationQueryResult GetStations(StationFilterModel filter = null)
         {
             try
@@ -88,11 +76,6 @@ namespace SparkPoint_Server.Services
             }
         }
 
-        /// <summary>
-        /// Gets a single charging station with its users
-        /// </summary>
-        /// <param name="stationId">The station ID</param>
-        /// <returns>Result of the retrieval operation</returns>
         public StationRetrievalResult GetStation(string stationId)
         {
             try
@@ -116,12 +99,6 @@ namespace SparkPoint_Server.Services
             }
         }
 
-        /// <summary>
-        /// Updates a charging station
-        /// </summary>
-        /// <param name="stationId">The station ID</param>
-        /// <param name="model">The update model</param>
-        /// <returns>Result of the update operation</returns>
         public StationOperationResult UpdateStation(string stationId, StationUpdateModel model)
         {
             // Validate the model
@@ -150,11 +127,6 @@ namespace SparkPoint_Server.Services
             }
         }
 
-        /// <summary>
-        /// Activates a charging station
-        /// </summary>
-        /// <param name="stationId">The station ID</param>
-        /// <returns>Result of the activation operation</returns>
         public StationOperationResult ActivateStation(string stationId)
         {
             try
@@ -184,11 +156,6 @@ namespace SparkPoint_Server.Services
             }
         }
 
-        /// <summary>
-        /// Deactivates a charging station
-        /// </summary>
-        /// <param name="stationId">The station ID</param>
-        /// <returns>Result of the deactivation operation</returns>
         public StationOperationResult DeactivateStation(string stationId)
         {
             try
@@ -230,13 +197,6 @@ namespace SparkPoint_Server.Services
             }
         }
 
-        /// <summary>
-        /// Gets stations with sorting
-        /// </summary>
-        /// <param name="filter">Optional filter criteria</param>
-        /// <param name="sortField">Field to sort by</param>
-        /// <param name="sortOrder">Sort order</param>
-        /// <returns>Result of the query operation</returns>
         public StationQueryResult GetStationsSorted(StationFilterModel filter, StationSortField sortField, SortOrder sortOrder)
         {
             try
@@ -257,13 +217,6 @@ namespace SparkPoint_Server.Services
             }
         }
 
-        /// <summary>
-        /// Gets stations with pagination
-        /// </summary>
-        /// <param name="filter">Optional filter criteria</param>
-        /// <param name="pageNumber">Page number (1-based)</param>
-        /// <param name="pageSize">Page size</param>
-        /// <returns>Result of the query operation with pagination info</returns>
         public StationQueryResult GetStationsPaginated(StationFilterModel filter, int pageNumber, int pageSize)
         {
             try
@@ -295,11 +248,6 @@ namespace SparkPoint_Server.Services
             }
         }
 
-        /// <summary>
-        /// Checks if a station exists and is active
-        /// </summary>
-        /// <param name="stationId">The station ID</param>
-        /// <returns>True if exists and is active, false otherwise</returns>
         public bool IsStationActiveAndExists(string stationId)
         {
             try
@@ -313,11 +261,6 @@ namespace SparkPoint_Server.Services
             }
         }
 
-        /// <summary>
-        /// Gets station statistics
-        /// </summary>
-        /// <param name="stationId">The station ID</param>
-        /// <returns>Station statistics object</returns>
         public object GetStationStatistics(string stationId)
         {
             try

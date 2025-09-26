@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace SparkPoint_Server.Models
 {
@@ -21,9 +23,85 @@ namespace SparkPoint_Server.Models
 
     public class RefreshTokenEntry
     {
+        [BsonId]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string Id { get; set; }
+
+        [BsonElement("userId")]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string UserId { get; set; }
+
+        [BsonElement("tokenId")]
+        public string TokenId { get; set; }
+
+        [BsonElement("tokenHash")]
+        public string TokenHash { get; set; }
+
+        [BsonElement("salt")]
+        public string Salt { get; set; }
+
+        [BsonElement("familyId")]
+        public string FamilyId { get; set; }
+
+        [BsonElement("deviceInfo")]
+        public string DeviceInfo { get; set; }
+
+        [BsonElement("userAgent")]
+        public string UserAgent { get; set; }
+
+        [BsonElement("ipAddress")]
+        public string IpAddress { get; set; }
+
+        [BsonElement("createdAt")]
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        [BsonElement("expiresAt")]
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        public DateTime ExpiresAt { get; set; }
+
+        [BsonElement("lastUsedAt")]
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        public DateTime? LastUsedAt { get; set; }
+
+        [BsonElement("isRevoked")]
+        public bool IsRevoked { get; set; } = false;
+
+        [BsonElement("revokedAt")]
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        public DateTime? RevokedAt { get; set; }
+
+        [BsonElement("revokedReason")]
+        public string RevokedReason { get; set; }
+
+        [BsonElement("parentTokenId")]
+        public string ParentTokenId { get; set; }
+
+        [BsonElement("isUsed")]
+        public bool IsUsed { get; set; } = false;
+
+        [BsonElement("usedAt")]
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        public DateTime? UsedAt { get; set; }
+
+        [BsonIgnore]
+        public bool IsExpired => DateTime.UtcNow >= ExpiresAt;
+
+        [BsonIgnore]
+        public bool IsValid => !IsRevoked && !IsExpired && !IsUsed;
+    }
+
+    public class LegacyRefreshTokenEntry
+    {
         public string UserId { get; set; }
         public string Token { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime ExpiresAt { get; set; }
+        public bool IsRevoked { get; set; } = false;
+        public string RevokedReason { get; set; }
+        public DateTime? RevokedAt { get; set; }
     }
+    
     public class AuthenticationResult
     {
         public AuthenticationStatus Status { get; private set; }
@@ -112,11 +190,24 @@ namespace SparkPoint_Server.Models
                     return AuthConstants.UserNotFound;
                 case TokenRefreshStatus.InvalidRefreshToken:
                     return AuthConstants.InvalidRefreshToken;
+                case TokenRefreshStatus.ExpiredRefreshToken:
+                    return AuthConstants.ExpiredRefreshToken;
+                case TokenRefreshStatus.RevokedRefreshToken:
+                    return AuthConstants.RevokedRefreshToken;
                 case TokenRefreshStatus.UserInactive:
                     return AuthConstants.UserAccountInactive;
+                case TokenRefreshStatus.TokenFamilyRevoked:
+                    return AuthConstants.TokenFamilyRevoked;
                 default:
                     return "Token refresh failed";
             }
         }
+    }
+
+    public class RefreshTokenContext
+    {
+        public string UserAgent { get; set; }
+        public string IpAddress { get; set; }
+        public DateTime RequestTime { get; set; } = DateTime.UtcNow;
     }
 }

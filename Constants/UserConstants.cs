@@ -18,7 +18,7 @@ namespace SparkPoint_Server.Constants
         
         public const string EVOwnersCollection = "EVOwners";
         
-        public const int MaxPhoneLength = 15;
+        public const int MaxPhoneLength = 10;
         public const int MaxNICLength = 20;
         public const int MinPhoneLength = 8;
         public const int MinNICLength = 5;

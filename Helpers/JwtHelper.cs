@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using SparkPoint_Server.Models;
@@ -36,7 +37,25 @@ namespace SparkPoint_Server.Helpers
 
         public static string GenerateRefreshToken()
         {
-            return Convert.ToBase64String(Guid.NewGuid().ToByteArray());
+            const int tokenLength = 32;
+            
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                var randomBytes = new byte[tokenLength];
+                rng.GetBytes(randomBytes);
+                return Convert.ToBase64String(randomBytes);
+            }
+        }
+
+        public static RefreshTokenData GenerateRefreshTokenWithExpiry()
+        {
+            return new RefreshTokenData
+            {
+                Token = GenerateRefreshToken(),
+                ExpiresAt = DateTime.UtcNow.AddDays(AuthConstants.RefreshTokenExpiryDays),
+                CreatedAt = DateTime.UtcNow,
+                IsRevoked = false
+            };
         }
 
         public static ClaimsPrincipal ValidateToken(string token, bool validateLifetime = true)
@@ -64,5 +83,15 @@ namespace SparkPoint_Server.Helpers
                 return null;
             }
         }
+    }
+
+    public class RefreshTokenData
+    {
+        public string Token { get; set; }
+        public DateTime ExpiresAt { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public bool IsRevoked { get; set; }
+        public string RevokedReason { get; set; }
+        public DateTime? RevokedAt { get; set; }
     }
 }

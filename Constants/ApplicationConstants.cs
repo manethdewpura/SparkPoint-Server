@@ -18,6 +18,11 @@ namespace SparkPoint_Server.Constants
         public const string StationUserRoleName = "Station User";
         public const string EVOwnerRoleName = "EV Owner";
 
+        // Role strings for attributes and middleware
+        public const string AdminRoleString = "1";
+        public const string StationUserRoleString = "2";
+        public const string EVOwnerRoleString = "3";
+
         // Default pagination
         public const int DefaultPageSize = 20;
         public const int MaxPageSize = 100;

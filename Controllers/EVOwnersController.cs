@@ -35,11 +35,11 @@ namespace SparkPoint_Server.Controllers
 
         [HttpPut]
         [Route("update")]
-        [RoleAuthorizeMiddleware("3")]
+        [EVOwnerOnly]
         [OwnAccountMiddleware]
         public IHttpActionResult UpdateProfile(EVOwnerUpdateModel model)
         {
-            var currentUserId = GetCurrentUserId();
+            var currentUserId = UserContextHelper.GetCurrentUserId(this);
             if (string.IsNullOrEmpty(currentUserId))
                 return Unauthorized();
 
@@ -55,11 +55,11 @@ namespace SparkPoint_Server.Controllers
 
         [HttpPut]
         [Route("deactivate")]
-        [RoleAuthorizeMiddleware("3")]
+        [EVOwnerOnly]
         [OwnAccountMiddleware]
         public IHttpActionResult DeactivateAccount()
         {
-            var currentUserId = GetCurrentUserId();
+            var currentUserId = UserContextHelper.GetCurrentUserId(this);
             if (string.IsNullOrEmpty(currentUserId))
                 return Unauthorized();
 
@@ -75,7 +75,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpPut]
         [Route("reactivate/{nic}")]
-        [RoleAuthorizeMiddleware("1")]
+        [AdminOnly]
         [OwnAccountMiddleware("nic")]
         public IHttpActionResult ReactivateAccount(string nic)
         {
@@ -91,11 +91,11 @@ namespace SparkPoint_Server.Controllers
 
         [HttpGet]
         [Route("profile")]
-        [RoleAuthorizeMiddleware("3")]
+        [EVOwnerOnly]
         [OwnAccountMiddleware]
         public IHttpActionResult GetProfile()
         {
-            var currentUserId = GetCurrentUserId();
+            var currentUserId = UserContextHelper.GetCurrentUserId(this);
             if (string.IsNullOrEmpty(currentUserId))
                 return Unauthorized();
 
@@ -111,7 +111,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpGet]
         [Route("profile/{nic}")]
-        [RoleAuthorizeMiddleware("1", "2")]
+        [AdminAndStationUser]
         [OwnAccountMiddleware("nic")]
         public IHttpActionResult GetProfileByNic(string nic)
         {
@@ -123,19 +123,6 @@ namespace SparkPoint_Server.Controllers
             }
 
             return Ok(result.UserProfile);
-        }
-
-        private string GetCurrentUserId()
-        {
-            var authHeader = Request.Headers.Authorization;
-            if (authHeader == null || authHeader.Scheme != "Bearer")
-                return null;
-
-            var principal = JwtHelper.ValidateToken(authHeader.Parameter);
-            if (principal == null)
-                return null;
-
-            return principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         }
 
         private IHttpActionResult GetErrorResponse(EVOwnerOperationStatus status, string errorMessage)

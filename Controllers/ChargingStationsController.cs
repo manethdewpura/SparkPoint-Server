@@ -21,7 +21,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpPost]
         [Route("")]
-        [RoleAuthorizeMiddleware("1")]
+        [AdminOnly]
         public IHttpActionResult CreateStation(StationCreateModel model)
         {
             var result = _chargingStationService.CreateStation(model);
@@ -36,7 +36,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpGet]
         [Route("")]
-        [RoleAuthorizeMiddleware("1")]
+        [AdminOnly]
         public IHttpActionResult GetStations([FromUri] StationFilterModel filter = null)
         {
             var result = _chargingStationService.GetStations(filter);
@@ -51,7 +51,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpGet]
         [Route("{stationId}")]
-        [RoleAuthorizeMiddleware("1")]
+        [AdminOnly]
         public IHttpActionResult GetStation(string stationId)
         {
             var result = _chargingStationService.GetStation(stationId);
@@ -74,7 +74,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpPut]
         [Route("{stationId}")]
-        [RoleAuthorizeMiddleware("1")]
+        [AdminOnly]
         public IHttpActionResult UpdateStation(string stationId, StationUpdateModel model)
         {
             var result = _chargingStationService.UpdateStation(stationId, model);
@@ -89,7 +89,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpPut]
         [Route("activate/{stationId}")]
-        [RoleAuthorizeMiddleware("1")]
+        [AdminOnly]
         public IHttpActionResult ActivateStation(string stationId)
         {
             var result = _chargingStationService.ActivateStation(stationId);
@@ -104,7 +104,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpPut]
         [Route("deactivate/{stationId}")]
-        [RoleAuthorizeMiddleware("1")]
+        [AdminOnly]
         public IHttpActionResult DeactivateStation(string stationId)
         {
             var result = _chargingStationService.DeactivateStation(stationId);
@@ -119,7 +119,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpGet]
         [Route("{stationId}/statistics")]
-        [RoleAuthorizeMiddleware("1")]
+        [AdminOnly]
         public IHttpActionResult GetStationStatistics(string stationId)
         {
             var statistics = _chargingStationService.GetStationStatistics(stationId);

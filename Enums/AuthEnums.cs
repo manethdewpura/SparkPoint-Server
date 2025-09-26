@@ -15,6 +15,9 @@ namespace SparkPoint_Server.Enums
         Success,
         UserNotFound,
         InvalidRefreshToken,
+        ExpiredRefreshToken,
+        RevokedRefreshToken,
+        TokenFamilyRevoked,
         UserInactive,
         Failed
     }
@@ -23,5 +26,17 @@ namespace SparkPoint_Server.Enums
     {
         AccessToken,
         RefreshToken
+    }
+
+    public enum TokenRevocationReason
+    {
+        UserLogout,
+        TokenRotation,
+        SecurityBreach,
+        ReuseDetected,
+        FamilyCompromised,
+        ExpiredCleanup,
+        AdminRevoke,
+        UserDeactivated
     }
 }
