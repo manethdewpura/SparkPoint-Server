@@ -7,6 +7,8 @@ using System.Web.Http;
 using System.Security.Claims;
 using SparkPoint_Server.Models;
 using SparkPoint_Server.Helpers;
+using SparkPoint_Server.Services;
+using SparkPoint_Server.Utils;
 using SparkPoint_Server.Attributes;
 using MongoDB.Driver;
 
@@ -19,6 +21,7 @@ namespace SparkPoint_Server.Controllers
         private readonly IMongoCollection<ChargingStation> _stationsCollection;
         private readonly IMongoCollection<User> _usersCollection;
         private readonly IMongoCollection<EVOwner> _evOwnersCollection;
+        private readonly BookingService _bookingService;
 
         public BookingsController()
         {
@@ -27,6 +30,7 @@ namespace SparkPoint_Server.Controllers
             _stationsCollection = dbContext.GetCollection<ChargingStation>("ChargingStations");
             _usersCollection = dbContext.GetCollection<User>("Users");
             _evOwnersCollection = dbContext.GetCollection<EVOwner>("EVOwners");
+            _bookingService = new BookingService();
         }
 
         // Create new reservation (within 7 days from booking date)
@@ -55,14 +59,13 @@ namespace SparkPoint_Server.Controllers
             var currentUserRole = int.Parse(userRoleClaim.Value);
             var ownerNIC = model.OwnerNIC;
 
-            // If user is EV Owner, they can only book for themselves
             if (currentUserRole == 3)
             {
                 var currentEvOwner = _evOwnersCollection.Find(ev => ev.UserId == currentUserId).FirstOrDefault();
                 if (currentEvOwner == null)
                     return BadRequest("EV Owner profile not found.");
                 
-                ownerNIC = currentEvOwner.NIC; // Force owner NIC to current user's NIC
+                ownerNIC = currentEvOwner.NIC;
             }
             else if (currentUserRole == 1 && string.IsNullOrEmpty(ownerNIC))
             {
@@ -87,14 +90,8 @@ namespace SparkPoint_Server.Controllers
             if (station == null)
                 return BadRequest("Station not found or inactive.");
 
-            // Check if slot is available at the requested time
-            var conflictingBookings = _bookingsCollection.Find(b => 
-                b.StationId == model.StationId && 
-                b.ReservationTime == model.ReservationTime &&
-                b.Status != "Cancelled" && 
-                b.Status != "Completed").CountDocuments();
-
-            if (conflictingBookings >= station.TotalSlots)
+            // Check if slot is available at the requested time using the service
+            if (!_bookingService.CheckSlotAvailability(model.StationId, model.ReservationTime))
                 return BadRequest("No available slots at the requested time.");
 
             var booking = new Booking
@@ -102,14 +99,21 @@ namespace SparkPoint_Server.Controllers
                 OwnerNIC = ownerNIC,
                 StationId = model.StationId,
                 ReservationTime = model.ReservationTime,
-                Status = "Pending",
+                Status = BookingStatusConstants.Pending, // Use constant
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
             _bookingsCollection.InsertOne(booking);
 
-            return Ok(new { Message = "Booking created successfully.", BookingId = booking.Id });
+            var availableSlots = _bookingService.GetAvailableSlotsAtTime(model.StationId, model.ReservationTime);
+
+            return Ok(new 
+            { 
+                Message = "Booking created successfully.", 
+                BookingId = booking.Id,
+                AvailableSlotsAtTime = availableSlots
+            });
         }
 
         // Get bookings based on user role
@@ -187,7 +191,7 @@ namespace SparkPoint_Server.Controllers
         // Get specific booking
         [HttpGet]
         [Route("{bookingId}")]
-        [RoleAuthorizeMiddleware("1", "2", "3")] // All authenticated users
+        [RoleAuthorizeMiddleware("1", "2", "3")]
         public IHttpActionResult GetBooking(string bookingId)
         {
             var booking = _bookingsCollection.Find(b => b.Id == bookingId).FirstOrDefault();
@@ -221,7 +225,6 @@ namespace SparkPoint_Server.Controllers
             return Ok(booking);
         }
 
-        // Update reservation data (at least 12 hours before reservation)
         [HttpPut]
         [Route("{bookingId}")]
         [RoleAuthorizeMiddleware("1", "3")] // Admin and EV Owner can update bookings
@@ -258,7 +261,7 @@ namespace SparkPoint_Server.Controllers
                 return BadRequest("Cannot modify booking less than 12 hours before reservation time.");
 
             // Check if booking is in a modifiable state
-            if (booking.Status == "Cancelled" || booking.Status == "Completed")
+            if (booking.Status == BookingStatusConstants.Cancelled || booking.Status == BookingStatusConstants.Completed)
                 return BadRequest("Cannot modify cancelled or completed bookings.");
 
             var updateBuilder = Builders<Booking>.Update.Set(b => b.UpdatedAt, DateTime.UtcNow);
@@ -273,16 +276,8 @@ namespace SparkPoint_Server.Controllers
                 if (daysFromNow > 7)
                     return BadRequest("Reservations can only be made up to 7 days in advance.");
 
-                // Check availability at new time
-                var conflictingBookings = _bookingsCollection.Find(b => 
-                    b.StationId == booking.StationId && 
-                    b.ReservationTime == model.ReservationTime.Value &&
-                    b.Status != "Cancelled" && 
-                    b.Status != "Completed" &&
-                    b.Id != bookingId).CountDocuments();
-
-                var station = _stationsCollection.Find(s => s.Id == booking.StationId).FirstOrDefault();
-                if (station != null && conflictingBookings >= station.TotalSlots)
+                // Check availability at new time using the service
+                if (!_bookingService.CheckSlotAvailability(booking.StationId, model.ReservationTime.Value, bookingId))
                     return BadRequest("No available slots at the requested time.");
 
                 updateBuilder = updateBuilder.Set(b => b.ReservationTime, model.ReservationTime.Value);
@@ -296,13 +291,9 @@ namespace SparkPoint_Server.Controllers
                     return BadRequest("New station not found or inactive.");
 
                 var reservationTime = model.ReservationTime ?? booking.ReservationTime;
-                var conflictingBookings = _bookingsCollection.Find(b => 
-                    b.StationId == model.StationId && 
-                    b.ReservationTime == reservationTime &&
-                    b.Status != "Cancelled" && 
-                    b.Status != "Completed").CountDocuments();
-
-                if (conflictingBookings >= newStation.TotalSlots)
+                
+                // Check availability at new station using the service
+                if (!_bookingService.CheckSlotAvailability(model.StationId, reservationTime))
                     return BadRequest("No available slots at the new station for the requested time.");
 
                 updateBuilder = updateBuilder.Set(b => b.StationId, model.StationId);
@@ -342,10 +333,10 @@ namespace SparkPoint_Server.Controllers
             }
 
             // Check if booking is already cancelled or completed
-            if (booking.Status == "Cancelled")
+            if (booking.Status == BookingStatusConstants.Cancelled)
                 return BadRequest("Booking is already cancelled.");
             
-            if (booking.Status == "Completed")
+            if (booking.Status == BookingStatusConstants.Completed)
                 return BadRequest("Cannot cancel completed booking.");
 
             // Check if booking can be cancelled (at least 12 hours before reservation)
@@ -353,16 +344,16 @@ namespace SparkPoint_Server.Controllers
             if (hoursUntilReservation < 12)
                 return BadRequest("Cannot cancel booking less than 12 hours before reservation time.");
 
-            var update = Builders<Booking>.Update
-                .Set(b => b.Status, "Cancelled")
-                .Set(b => b.UpdatedAt, DateTime.UtcNow);
+            // Use the service to update status and manage slots
+            var result = _bookingService.UpdateBookingStatus(bookingId, BookingStatusConstants.Cancelled, booking.Status);
+            
+            if (!result.IsSuccess)
+                return BadRequest(result.Message);
 
-            _bookingsCollection.UpdateOne(b => b.Id == bookingId, update);
-
-            return Ok("Booking cancelled successfully.");
+            return Ok(result.Message);
         }
 
-        // Update booking status (for station users and admins)
+        // Update booking status (for station users and admins) - WITH SLOT MANAGEMENT
         [HttpPut]
         [Route("status/{bookingId}")]
         [RoleAuthorizeMiddleware("1", "2")] // Admin and Station User can update status
@@ -393,36 +384,56 @@ namespace SparkPoint_Server.Controllers
                     return BadRequest("Access denied.");
             }
 
-            // Validate status transitions
-            var validStatuses = new[] { "Pending", "Confirmed", "In Progress", "Completed", "Cancelled", "No Show" };
-            if (!validStatuses.Contains(model.Status))
+            // Validate status transitions using constants
+            if (!BookingStatusConstants.IsValidStatus(model.Status))
                 return BadRequest("Invalid status value.");
 
             var hoursUntilReservation = (booking.ReservationTime - DateTime.Now).TotalHours;
             
-            // If less than 12 hours before reservation, only allow "In Progress" and "Completed" status updates
+            // If less than 12 hours before reservation, only allow certain status updates
             if (hoursUntilReservation < 12)
             {
-                var allowedStatuses = new[] { "In Progress", "Completed", "No Show" };
-                if (!allowedStatuses.Contains(model.Status))
+                if (!BookingStatusConstants.IsNearTimeAllowedStatus(model.Status))
                     return BadRequest("Only 'In Progress', 'Completed', and 'No Show' status updates are allowed within 12 hours of reservation time.");
             }
 
             // Prevent certain status changes
-            if (booking.Status == "Completed" && model.Status != "Completed")
+            if (booking.Status == BookingStatusConstants.Completed && model.Status != BookingStatusConstants.Completed)
                 return BadRequest("Cannot change status of completed booking.");
             
-            if (booking.Status == "Cancelled" && model.Status != "Cancelled")
+            if (booking.Status == BookingStatusConstants.Cancelled && model.Status != BookingStatusConstants.Cancelled)
                 return BadRequest("Cannot change status of cancelled booking.");
 
-            var update = Builders<Booking>.Update
-                .Set(b => b.Status, model.Status)
-                .Set(b => b.UpdatedAt, DateTime.UtcNow);
+            // Use the service to update status and manage slots
+            var result = _bookingService.UpdateBookingStatus(bookingId, model.Status, booking.Status);
+            
+            if (!result.IsSuccess)
+                return BadRequest(result.Message);
 
-            _bookingsCollection.UpdateOne(b => b.Id == bookingId, update);
+            return Ok(result.Message);
+        }
 
-            return Ok("Booking status updated successfully.");
+        // GET endpoint to check available slots at a specific time for a station
+        [HttpGet]
+        [Route("availability/{stationId}")]
+        [RoleAuthorizeMiddleware("1", "2", "3")] // All authenticated users can check availability
+        public IHttpActionResult CheckSlotAvailability(string stationId, [FromUri] DateTime reservationTime)
+        {
+            var station = _stationsCollection.Find(s => s.Id == stationId).FirstOrDefault();
+            if (station == null)
+                return BadRequest("Station not found.");
+
+            var availableSlots = _bookingService.GetAvailableSlotsAtTime(stationId, reservationTime);
+            var isAvailable = availableSlots > 0;
+
+            return Ok(new 
+            { 
+                StationId = stationId,
+                ReservationTime = reservationTime,
+                TotalSlots = station.TotalSlots,
+                AvailableSlots = availableSlots,
+                IsAvailable = isAvailable
+            });
         }
     }
-
 }
