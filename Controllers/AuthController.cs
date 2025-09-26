@@ -108,29 +108,4 @@ namespace SparkPoint_Server.Controllers
             return HashPassword(password) == hash;
         }
     }
-
-    public class RegisterModel
-    {
-        public string Username { get; set; }
-        public string Email { get; set; }
-        public string FirstName { get; set; }
-        public string LastName { get; set; }
-        public string Password { get; set; }
-        public string Role { get; set; }
-    }
-    public class LoginModel
-    {
-        public string Username { get; set; }
-        public string Password { get; set; }
-    }
-    public class RefreshModel
-    {
-        public string UserId { get; set; }
-        public string RefreshToken { get; set; }
-    }
-    public class RefreshTokenEntry
-    {
-        public string UserId { get; set; }
-        public string Token { get; set; }
-    }
 }
