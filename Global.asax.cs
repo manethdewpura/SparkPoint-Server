@@ -1,10 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
 using System.Web.Http;
-using System.Web.Routing;
 using SparkPoint_Server.Services;
+using dotenv.net;
 
 namespace SparkPoint_Server
 {
@@ -14,6 +10,7 @@ namespace SparkPoint_Server
 
         protected void Application_Start()
         {
+            DotEnv.Load(options: new DotEnvOptions(envFilePaths: new[] { Server.MapPath("~/") + ".env" }, overwriteExistingVars: false));
             GlobalConfiguration.Configure(WebApiConfig.Register);
             
             _cleanupService = new TokenCleanupService();

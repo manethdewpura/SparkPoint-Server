@@ -127,8 +127,9 @@ namespace SparkPoint_Server.Services
 
         public List<RefreshTokenEntry> GetActiveUserTokens(string userId)
         {
-            return _refreshTokensCollection
-                .Find(t => t.UserId == userId && t.IsValid)
+			var now = DateTime.UtcNow;
+			return _refreshTokensCollection
+				.Find(t => t.UserId == userId && !t.IsRevoked && !t.IsUsed && t.ExpiresAt > now)
                 .SortByDescending(t => t.CreatedAt)
                 .ToList();
         }

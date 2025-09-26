@@ -96,7 +96,9 @@ namespace SparkPoint_Server
 
         private void AddCorsHeaders(HttpResponseMessage response, HttpRequestMessage request)
         {
-            var origin = request.Headers.GetValues("Origin")?.FirstOrDefault();
+            var origin = request.Headers.Contains("Origin")
+                ? request.Headers.GetValues("Origin")?.FirstOrDefault()
+                : null;
             
             // Production: Use specific allowed origins
             if (IsProductionEnvironment)
@@ -164,9 +166,7 @@ namespace SparkPoint_Server
             // Default allowed origins for production
             if (allowedOrigins.Count == 0)
             {
-                allowedOrigins.Add("https://sparkpoint.app");
-                allowedOrigins.Add("https://www.sparkpoint.app");
-                allowedOrigins.Add("https://admin.sparkpoint.app");
+                allowedOrigins.Add("*");
             }
 
             return allowedOrigins;

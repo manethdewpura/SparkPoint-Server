@@ -46,7 +46,6 @@ namespace SparkPoint_Server.Helpers
             
             if (string.IsNullOrEmpty(connectionString))
             {
-                // Fallback to app settings
                 connectionString = ConfigurationManager.AppSettings["MongoDbConnection"];
             }
 
