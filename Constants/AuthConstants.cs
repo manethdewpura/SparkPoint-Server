@@ -10,7 +10,7 @@ namespace SparkPoint_Server.Constants
         public static readonly string Issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "SparkPoint_Server";
         public static readonly string Audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "SparkPoint_Client";
         
-        public const int AccessTokenExpiryMinutes = 30;
+        public const int AccessTokenExpiryMinutes = 15;
         public const int RefreshTokenExpiryDays = 30;
 
         public const string InvalidCredentials = "Invalid username or password";
