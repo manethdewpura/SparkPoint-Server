@@ -14,8 +14,11 @@ namespace SparkPoint_Server.Models
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; }
 
+        [BsonElement("name")]
+        public string Name { get; set; }
+
         [BsonElement("location")]
-        public string Location { get; set; }
+        public LocationCoordinates Location { get; set; }
 
         [BsonElement("type")]
         public string Type { get; set; }
@@ -38,11 +41,33 @@ namespace SparkPoint_Server.Models
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 
+    public class LocationCoordinates
+    {
+        [BsonElement("longitude")]
+        [Range(-180.0, 180.0, ErrorMessage = "Longitude must be between -180 and 180")]
+        public double Longitude { get; set; }
+
+        [BsonElement("latitude")]
+        [Range(-90.0, 90.0, ErrorMessage = "Latitude must be between -90 and 90")]
+        public double Latitude { get; set; }
+
+        public LocationCoordinates() { }
+
+        public LocationCoordinates(double longitude, double latitude)
+        {
+            Longitude = longitude;
+            Latitude = latitude;
+        }
+    }
+
     public class StationCreateModel
     {
-        [Required(ErrorMessage = "Location is required")]
-        [StringLength(200, ErrorMessage = "Location cannot exceed 200 characters")]
-        public string Location { get; set; }
+        [Required(ErrorMessage = "Name is required")]
+        [StringLength(100, ErrorMessage = "Name cannot exceed 100 characters")]
+        public string Name { get; set; }
+
+        [Required(ErrorMessage = "Location coordinates are required")]
+        public LocationCoordinates Location { get; set; }
 
         [Required(ErrorMessage = "Type is required")]
         [StringLength(50, ErrorMessage = "Type cannot exceed 50 characters")]
@@ -54,8 +79,10 @@ namespace SparkPoint_Server.Models
 
     public class StationUpdateModel
     {
-        [StringLength(200, ErrorMessage = "Location cannot exceed 200 characters")]
-        public string Location { get; set; }
+        [StringLength(100, ErrorMessage = "Name cannot exceed 100 characters")]
+        public string Name { get; set; }
+
+        public LocationCoordinates Location { get; set; }
 
         [StringLength(50, ErrorMessage = "Type cannot exceed 50 characters")]
         public string Type { get; set; }
@@ -70,6 +97,9 @@ namespace SparkPoint_Server.Models
         
         [StringLength(100, ErrorMessage = "Search term cannot exceed 100 characters")]
         public string SearchTerm { get; set; }
+
+        public LocationCoordinates NearLocation { get; set; }
+        public double? MaxDistanceKm { get; set; }
     }
 
     public class StationQueryModel : StationFilterModel
@@ -224,10 +254,20 @@ namespace SparkPoint_Server.Models
         {
             switch (error)
             {
+                case StationValidationError.NameRequired:
+                    return ChargingStationConstants.NameRequired;
+                case StationValidationError.NameTooLong:
+                    return $"Station name cannot exceed {ChargingStationConstants.MaxNameLength} characters";
                 case StationValidationError.LocationRequired:
                     return ChargingStationConstants.LocationRequired;
-                case StationValidationError.LocationTooLong:
-                    return $"Location cannot exceed {ChargingStationConstants.MaxLocationLength} characters";
+                case StationValidationError.LongitudeRequired:
+                    return ChargingStationConstants.LongitudeRequired;
+                case StationValidationError.LatitudeRequired:
+                    return ChargingStationConstants.LatitudeRequired;
+                case StationValidationError.InvalidLongitude:
+                    return ChargingStationConstants.InvalidLongitude;
+                case StationValidationError.InvalidLatitude:
+                    return ChargingStationConstants.InvalidLatitude;
                 case StationValidationError.TypeRequired:
                     return ChargingStationConstants.TypeRequired;
                 case StationValidationError.InvalidType:
