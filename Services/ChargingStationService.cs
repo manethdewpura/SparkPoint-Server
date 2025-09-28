@@ -39,6 +39,7 @@ namespace SparkPoint_Server.Services
                 // Create the station
                 var station = new ChargingStation
                 {
+                    Name = ChargingStationUtils.SanitizeName(model.Name),
                     Location = ChargingStationUtils.SanitizeLocation(model.Location),
                     Type = ChargingStationUtils.SanitizeType(model.Type),
                     TotalSlots = model.TotalSlots,

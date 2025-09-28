@@ -7,7 +7,6 @@ using SparkPoint_Server.Models;
 
 namespace SparkPoint_Server.Utils
 {
-
     public static class ChargingStationUtils
     {
         public static StationValidationResult ValidateCreateModel(StationCreateModel model)
@@ -17,10 +16,20 @@ namespace SparkPoint_Server.Utils
 
             var errors = new List<StationValidationError>();
 
-            if (string.IsNullOrEmpty(model.Location))
+            // Validate name
+            if (string.IsNullOrEmpty(model.Name))
+                errors.Add(StationValidationError.NameRequired);
+            else if (model.Name.Length > ChargingStationConstants.MaxNameLength)
+                errors.Add(StationValidationError.NameTooLong);
+
+            // Validate location coordinates
+            if (model.Location == null)
                 errors.Add(StationValidationError.LocationRequired);
-            else if (model.Location.Length > ChargingStationConstants.MaxLocationLength)
-                errors.Add(StationValidationError.LocationTooLong);
+            else
+            {
+                var coordinateErrors = ValidateLocationCoordinates(model.Location);
+                errors.AddRange(coordinateErrors);
+            }
 
             if (string.IsNullOrEmpty(model.Type))
                 errors.Add(StationValidationError.TypeRequired);
@@ -42,10 +51,18 @@ namespace SparkPoint_Server.Utils
 
             var errors = new List<StationValidationError>();
 
-            if (!string.IsNullOrEmpty(model.Location))
+            // Validate name if provided
+            if (!string.IsNullOrEmpty(model.Name))
             {
-                if (model.Location.Length > ChargingStationConstants.MaxLocationLength)
-                    errors.Add(StationValidationError.LocationTooLong);
+                if (model.Name.Length > ChargingStationConstants.MaxNameLength)
+                    errors.Add(StationValidationError.NameTooLong);
+            }
+
+            // Validate location coordinates if provided
+            if (model.Location != null)
+            {
+                var coordinateErrors = ValidateLocationCoordinates(model.Location);
+                errors.AddRange(coordinateErrors);
             }
 
             if (!string.IsNullOrEmpty(model.Type))
@@ -63,6 +80,25 @@ namespace SparkPoint_Server.Utils
             }
 
             return errors.Any() ? StationValidationResult.Failed(errors) : StationValidationResult.Success();
+        }
+
+        public static List<StationValidationError> ValidateLocationCoordinates(LocationCoordinates coordinates)
+        {
+            var errors = new List<StationValidationError>();
+
+            if (coordinates.Longitude < ChargingStationConstants.MinLongitude || 
+                coordinates.Longitude > ChargingStationConstants.MaxLongitude)
+            {
+                errors.Add(StationValidationError.InvalidLongitude);
+            }
+
+            if (coordinates.Latitude < ChargingStationConstants.MinLatitude || 
+                coordinates.Latitude > ChargingStationConstants.MaxLatitude)
+            {
+                errors.Add(StationValidationError.InvalidLatitude);
+            }
+
+            return errors;
         }
 
         public static bool IsValidStationType(string type)
@@ -89,6 +125,7 @@ namespace SparkPoint_Server.Utils
                     return StationType.AC;
             }
         }
+
         public static string GetStationTypeString(StationType type)
         {
             switch (type)
@@ -102,12 +139,26 @@ namespace SparkPoint_Server.Utils
             }
         }
 
-        public static string SanitizeLocation(string location)
+        public static string SanitizeName(string name)
         {
-            if (string.IsNullOrWhiteSpace(location))
+            if (string.IsNullOrWhiteSpace(name))
                 return null;
 
-            return location.Trim();
+            return name.Trim();
+        }
+
+        public static LocationCoordinates SanitizeLocation(LocationCoordinates location)
+        {
+            if (location == null)
+                return null;
+
+            // Ensure coordinates are within valid ranges
+            var longitude = Math.Max(ChargingStationConstants.MinLongitude, 
+                             Math.Min(ChargingStationConstants.MaxLongitude, location.Longitude));
+            var latitude = Math.Max(ChargingStationConstants.MinLatitude, 
+                            Math.Min(ChargingStationConstants.MaxLatitude, location.Latitude));
+
+            return new LocationCoordinates(longitude, latitude);
         }
 
         public static string SanitizeType(string type)
@@ -149,6 +200,29 @@ namespace SparkPoint_Server.Utils
         public static string[] GetValidStationTypes()
         {
             return ChargingStationConstants.ValidStationTypes;
+        }
+
+        // Helper method to calculate distance between two coordinates (optional, for future use)
+        public static double CalculateDistance(LocationCoordinates coord1, LocationCoordinates coord2)
+        {
+            const double EarthRadius = 6371; // Earth's radius in kilometers
+
+            var lat1Rad = ToRadians(coord1.Latitude);
+            var lat2Rad = ToRadians(coord2.Latitude);
+            var deltaLatRad = ToRadians(coord2.Latitude - coord1.Latitude);
+            var deltaLonRad = ToRadians(coord2.Longitude - coord1.Longitude);
+
+            var a = Math.Sin(deltaLatRad / 2) * Math.Sin(deltaLatRad / 2) +
+                    Math.Cos(lat1Rad) * Math.Cos(lat2Rad) *
+                    Math.Sin(deltaLonRad / 2) * Math.Sin(deltaLonRad / 2);
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+
+            return EarthRadius * c;
+        }
+
+        private static double ToRadians(double degrees)
+        {
+            return degrees * (Math.PI / 180);
         }
     }
 }

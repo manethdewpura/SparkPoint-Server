@@ -4,7 +4,12 @@ namespace SparkPoint_Server.Constants
     {
         // Validation Messages
         public const string StationDataRequired = "Station data is required.";
-        public const string LocationRequired = "Location is required.";
+        public const string NameRequired = "Station name is required.";
+        public const string LocationRequired = "Location coordinates are required.";
+        public const string LongitudeRequired = "Longitude is required.";
+        public const string LatitudeRequired = "Latitude is required.";
+        public const string InvalidLongitude = "Longitude must be between -180 and 180.";
+        public const string InvalidLatitude = "Latitude must be between -90 and 90.";
         public const string TypeRequired = "Type is required.";
         public const string TotalSlotsMustBePositive = "Total slots must be greater than 0.";
         public const string UpdateDataRequired = "Update data is required.";
@@ -26,13 +31,18 @@ namespace SparkPoint_Server.Constants
         // Validation Constants
         public const int MinTotalSlots = 1;
         public const int MaxTotalSlots = 100;
-        public const int MaxLocationLength = 200;
+        public const int MaxNameLength = 100;
         public const int MaxTypeLength = 50;
+        public const double MinLongitude = -180.0;
+        public const double MaxLongitude = 180.0;
+        public const double MinLatitude = -90.0;
+        public const double MaxLatitude = 90.0;
         
         // Station Types (if needed for validation)
         public static readonly string[] ValidStationTypes = { "AC", "DC"};
         
         // Station Search Constants
+        public const string NameField = "name";
         public const string LocationField = "location";
         public const string TypeField = "type";
         

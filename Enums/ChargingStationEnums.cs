@@ -13,6 +13,7 @@ namespace SparkPoint_Server.Enums
     public enum StationFilterType
     {
         ActiveStatus,
+        Name,
         Location,
         Type,
         SearchTerm
@@ -20,6 +21,7 @@ namespace SparkPoint_Server.Enums
 
     public enum StationSortField
     {
+        Name,
         Location,
         Type,
         TotalSlots,
@@ -38,8 +40,13 @@ namespace SparkPoint_Server.Enums
     public enum StationValidationError
     {
         None,
+        NameRequired,
+        NameTooLong,
         LocationRequired,
-        LocationTooLong,
+        LongitudeRequired,
+        LatitudeRequired,
+        InvalidLongitude,
+        InvalidLatitude,
         TypeRequired,
         InvalidType,
         TotalSlotsMustBePositive,

@@ -28,12 +28,21 @@ namespace SparkPoint_Server.Helpers
                 filterBuilder = Builders<ChargingStation>.Filter.And(filterBuilder, searchFilter);
             }
 
+            // Add location-based filtering if specified
+            if (filter.NearLocation != null && filter.MaxDistanceKm.HasValue)
+            {
+                var locationFilter = BuildLocationFilter(filter.NearLocation, filter.MaxDistanceKm.Value);
+                filterBuilder = Builders<ChargingStation>.Filter.And(filterBuilder, locationFilter);
+            }
+
             return filterBuilder;
         }
+
         private static FilterDefinition<ChargingStation> BuildSearchFilter(string searchTerm)
         {
-            var locationFilter = Builders<ChargingStation>.Filter.Regex(
-                s => s.Location, 
+            // Search in station name and type
+            var nameFilter = Builders<ChargingStation>.Filter.Regex(
+                s => s.Name, 
                 new MongoDB.Bson.BsonRegularExpression(searchTerm, "i")
             );
 
@@ -42,7 +51,27 @@ namespace SparkPoint_Server.Helpers
                 new MongoDB.Bson.BsonRegularExpression(searchTerm, "i")
             );
 
-            return Builders<ChargingStation>.Filter.Or(locationFilter, typeFilter);
+            return Builders<ChargingStation>.Filter.Or(nameFilter, typeFilter);
+        }
+
+        private static FilterDefinition<ChargingStation> BuildLocationFilter(LocationCoordinates center, double maxDistanceKm)
+        {
+            // Simple bounding box filter for location-based search
+            // This is a simplified version - for production, you'd want proper geospatial indexing
+            var latDelta = maxDistanceKm / 111.0; // Rough approximation: 1 degree latitude ? 111 km
+            var lonDelta = maxDistanceKm / (111.0 * System.Math.Cos(center.Latitude * System.Math.PI / 180.0));
+
+            var minLat = center.Latitude - latDelta;
+            var maxLat = center.Latitude + latDelta;
+            var minLon = center.Longitude - lonDelta;
+            var maxLon = center.Longitude + lonDelta;
+
+            return Builders<ChargingStation>.Filter.And(
+                Builders<ChargingStation>.Filter.Gte(s => s.Location.Latitude, minLat),
+                Builders<ChargingStation>.Filter.Lte(s => s.Location.Latitude, maxLat),
+                Builders<ChargingStation>.Filter.Gte(s => s.Location.Longitude, minLon),
+                Builders<ChargingStation>.Filter.Lte(s => s.Location.Longitude, maxLon)
+            );
         }
 
         public static SortDefinition<ChargingStation> BuildStationSort(StationSortField sortField, SortOrder sortOrder)
@@ -53,10 +82,10 @@ namespace SparkPoint_Server.Helpers
 
             switch (sortField)
             {
-                case StationSortField.Location:
-                    sortDefinition = sortOrder == SortOrder.Ascending 
-                        ? sortBuilder.Ascending(s => s.Location)
-                        : sortBuilder.Descending(s => s.Location);
+                case StationSortField.Name:
+                    sortDefinition = sortOrder == SortOrder.Ascending
+                        ? sortBuilder.Ascending(s => s.Name)
+                        : sortBuilder.Descending(s => s.Name);
                     break;
                 case StationSortField.Type:
                     sortDefinition = sortOrder == SortOrder.Ascending
@@ -87,6 +116,10 @@ namespace SparkPoint_Server.Helpers
                     sortDefinition = sortOrder == SortOrder.Ascending
                         ? sortBuilder.Ascending(s => s.UpdatedAt)
                         : sortBuilder.Descending(s => s.UpdatedAt);
+                    break;
+                case StationSortField.Location:
+                    // For coordinate sorting, we'll default to created date
+                    sortDefinition = sortBuilder.Descending(s => s.CreatedAt);
                     break;
                 default:
                     sortDefinition = sortBuilder.Descending(s => s.CreatedAt);
@@ -121,7 +154,13 @@ namespace SparkPoint_Server.Helpers
         {
             var updateBuilder = Builders<ChargingStation>.Update.Set(s => s.UpdatedAt, System.DateTime.UtcNow);
 
-            if (!string.IsNullOrEmpty(model.Location))
+            if (!string.IsNullOrEmpty(model.Name))
+            {
+                var sanitizedName = Utils.ChargingStationUtils.SanitizeName(model.Name);
+                updateBuilder = updateBuilder.Set(s => s.Name, sanitizedName);
+            }
+
+            if (model.Location != null)
             {
                 var sanitizedLocation = Utils.ChargingStationUtils.SanitizeLocation(model.Location);
                 updateBuilder = updateBuilder.Set(s => s.Location, sanitizedLocation);
