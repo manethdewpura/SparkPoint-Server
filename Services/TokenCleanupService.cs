@@ -47,6 +47,8 @@ namespace SparkPoint_Server.Services
                 {
                     var authService = new AuthService();
                     authService.CleanupExpiredTokens();
+                    
+                    System.Diagnostics.Debug.WriteLine("Token cleanup completed successfully");
                 }
                 catch (Exception ex)
                 {
