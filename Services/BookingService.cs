@@ -5,6 +5,7 @@ using MongoDB.Driver;
 using SparkPoint_Server.Models;
 using SparkPoint_Server.Helpers;
 using SparkPoint_Server.Constants;
+using SparkPoint_Server.Enums;
 
 namespace SparkPoint_Server.Services
 { 
@@ -50,12 +51,12 @@ namespace SparkPoint_Server.Services
 
             // Validate station
             var stationResult = ValidateStation(model.StationId);
-            if (!stationResult.IsSuccess)
+            if (!stationResult.IsValid)
                 return BookingOperationResult.Failed(stationResult.ErrorMessage);
 
-            // Check slot availability
-            if (!CheckSlotAvailability(model.StationId, model.ReservationTime))
-                return BookingOperationResult.Failed(ValidationMessages.NoAvailableSlots);
+            // Check slot availability for the requested number of slots
+            if (!CheckSlotAvailability(model.StationId, model.ReservationTime, model.SlotsRequested))
+                return BookingOperationResult.Failed($"Only {GetAvailableSlotsAtTime(model.StationId, model.ReservationTime)} slots available for the requested time slot.");
 
             // Create booking
             var booking = new Booking
@@ -63,6 +64,7 @@ namespace SparkPoint_Server.Services
                 OwnerNIC = ownerResult.OwnerNIC,
                 StationId = model.StationId,
                 ReservationTime = model.ReservationTime,
+                SlotsRequested = model.SlotsRequested,
                 Status = BookingStatusConstants.Pending,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -71,10 +73,16 @@ namespace SparkPoint_Server.Services
             _bookingsCollection.InsertOne(booking);
 
             var availableSlots = GetAvailableSlotsAtTime(model.StationId, model.ReservationTime);
+            var slotDisplayName = TimeSlotConstants.GetSlotDisplayName(model.ReservationTime);
 
             return BookingOperationResult.Success(
-                $"Booking created successfully.",
-                new { BookingId = booking.Id, AvailableSlotsAtTime = availableSlots }
+                $"Booking created successfully for {slotDisplayName}.",
+                new { 
+                    BookingId = booking.Id, 
+                    SlotsBooked = model.SlotsRequested,
+                    TimeSlot = slotDisplayName,
+                    AvailableSlotsRemaining = availableSlots 
+                }
             );
         }
 
@@ -119,7 +127,10 @@ namespace SparkPoint_Server.Services
                 .SortByDescending(b => b.CreatedAt)
                 .ToList();
 
-            return BookingsQueryResult.Success(bookings);
+            // Enrich bookings with station information
+            var enrichedBookings = EnrichBookingsWithStationInfo(bookings);
+
+            return BookingsQueryResult.Success(enrichedBookings);
         }
 
         public BookingRetrievalResult GetBooking(string bookingId, UserContext userContext)
@@ -132,7 +143,10 @@ namespace SparkPoint_Server.Services
             if (!authResult.IsAuthorized)
                 return BookingRetrievalResult.Failed(authResult.ErrorMessage);
 
-            return BookingRetrievalResult.Success(booking);
+            // Enrich booking with station information
+            var enrichedBooking = EnrichBookingWithStationInfo(booking);
+
+            return BookingRetrievalResult.Success(enrichedBooking);
         }
 
         public BookingOperationResult UpdateBooking(string bookingId, BookingUpdateModel model, UserContext userContext)
@@ -156,22 +170,34 @@ namespace SparkPoint_Server.Services
             // Handle reservation time update
             if (model.ReservationTime.HasValue)
             {
-                if (!CheckSlotAvailability(booking.StationId, model.ReservationTime.Value, bookingId))
-                    return BookingOperationResult.Failed(ValidationMessages.NoAvailableSlots);
+                var slotsToCheck = model.SlotsRequested ?? booking.SlotsRequested;
+                if (!CheckSlotAvailability(booking.StationId, model.ReservationTime.Value, slotsToCheck, bookingId))
+                    return BookingOperationResult.Failed($"Only {GetAvailableSlotsAtTime(booking.StationId, model.ReservationTime.Value)} slots available for the requested time slot.");
 
                 updateBuilder = updateBuilder.Set(b => b.ReservationTime, model.ReservationTime.Value);
+            }
+
+            // Handle slots requested update
+            if (model.SlotsRequested.HasValue)
+            {
+                var reservationTime = model.ReservationTime ?? booking.ReservationTime;
+                if (!CheckSlotAvailability(booking.StationId, reservationTime, model.SlotsRequested.Value, bookingId))
+                    return BookingOperationResult.Failed($"Only {GetAvailableSlotsAtTime(booking.StationId, reservationTime)} slots available for the requested time slot.");
+
+                updateBuilder = updateBuilder.Set(b => b.SlotsRequested, model.SlotsRequested.Value);
             }
 
             // Handle station change
             if (!string.IsNullOrEmpty(model.StationId) && model.StationId != booking.StationId)
             {
                 var stationResult = ValidateStation(model.StationId);
-                if (!stationResult.IsSuccess)
+                if (!stationResult.IsValid)
                     return BookingOperationResult.Failed(stationResult.ErrorMessage);
 
                 var reservationTime = model.ReservationTime ?? booking.ReservationTime;
-                if (!CheckSlotAvailability(model.StationId, reservationTime))
-                    return BookingOperationResult.Failed("No available slots at the new station for the requested time.");
+                var slotsToCheck = model.SlotsRequested ?? booking.SlotsRequested;
+                if (!CheckSlotAvailability(model.StationId, reservationTime, slotsToCheck))
+                    return BookingOperationResult.Failed("Insufficient slots available at the new station for the requested time.");
 
                 updateBuilder = updateBuilder.Set(b => b.StationId, model.StationId);
             }
@@ -260,8 +286,8 @@ namespace SparkPoint_Server.Services
             if (station == null)
                 return BookingStatusUpdateResult.Failed(ValidationMessages.StationNotFound);
 
-            // Calculate slot changes
-            var slotChange = CalculateSlotChange(oldStatus, newStatus);
+            // Calculate slot changes based on the number of slots in the booking
+            var slotChange = CalculateSlotChange(oldStatus, newStatus, booking.SlotsRequested);
             
             // Update available slots if there's a change
             if (slotChange != 0)
@@ -292,7 +318,7 @@ namespace SparkPoint_Server.Services
             return BookingStatusUpdateResult.Success($"Booking status updated to {newStatus}. {slotMessage}");
         }
 
-        private int CalculateSlotChange(string oldStatus, string newStatus)
+        private int CalculateSlotChange(string oldStatus, string newStatus, int slotsRequested)
         {
             var oldReservesSlot = BookingStatusConstants.IsSlotReservingStatus(oldStatus);
             var newReservesSlot = BookingStatusConstants.IsSlotReservingStatus(newStatus);
@@ -301,28 +327,38 @@ namespace SparkPoint_Server.Services
 
             // If moving from a slot-reserving status to a slot-freeing status
             if (oldReservesSlot && newFreesSlot)
-                return 1; // Free one slot
+                return slotsRequested; // Free the requested slots
 
             // If moving from a non-reserving status to a slot-reserving status
             if (!oldReservesSlot && !oldFreesSlot && newReservesSlot)
-                return -1; // Reserve one slot
+                return -slotsRequested; // Reserve the requested slots
 
             // If moving from a slot-freeing status to a slot-reserving status (rare case)
             if (oldFreesSlot && newReservesSlot)
-                return -1; // Reserve one slot
+                return -slotsRequested; // Reserve the requested slots
 
             // If moving from "Pending" to "Confirmed" or "In Progress"
             if (oldStatus == BookingStatusConstants.Pending && BookingStatusConstants.IsSlotReservingStatus(newStatus))
-                return -1; // Reserve one slot
+                return -slotsRequested; // Reserve the requested slots
 
             return 0; // No change in slot allocation
         }
 
-        public bool CheckSlotAvailability(string stationId, DateTime reservationTime, string excludeBookingId = null)
+        public bool CheckSlotAvailability(string stationId, DateTime reservationTime, int slotsRequested = 1, string excludeBookingId = null)
         {
             var station = _stationsCollection.Find(s => s.Id == stationId).FirstOrDefault();
             if (station == null)
                 return false;
+
+            var availableSlots = GetAvailableSlotsAtTime(stationId, reservationTime, excludeBookingId);
+            return availableSlots >= slotsRequested;
+        }
+
+        public int GetAvailableSlotsAtTime(string stationId, DateTime reservationTime, string excludeBookingId = null)
+        {
+            var station = _stationsCollection.Find(s => s.Id == stationId).FirstOrDefault();
+            if (station == null)
+                return 0;
 
             var filterBuilder = Builders<Booking>.Filter.And(
                 Builders<Booking>.Filter.Eq(b => b.StationId, stationId),
@@ -341,24 +377,11 @@ namespace SparkPoint_Server.Services
                 );
             }
 
-            var conflictingBookingsCount = _bookingsCollection.CountDocuments(filterBuilder);
+            var bookedSlots = _bookingsCollection.Find(filterBuilder)
+                .ToList()
+                .Sum(b => b.SlotsRequested);
 
-            return conflictingBookingsCount < station.TotalSlots;
-        }
-
-        public int GetAvailableSlotsAtTime(string stationId, DateTime reservationTime)
-        {
-            var station = _stationsCollection.Find(s => s.Id == stationId).FirstOrDefault();
-            if (station == null)
-                return 0;
-
-            var bookedSlotsAtTime = _bookingsCollection.CountDocuments(b =>
-                b.StationId == stationId &&
-                b.ReservationTime == reservationTime &&
-                !BookingStatusConstants.IsSlotFreeingStatus(b.Status)
-            );
-
-            return station.TotalSlots - (int)bookedSlotsAtTime;
+            return station.TotalSlots - bookedSlots;
         }
 
         public BookingStatusUpdateResult RecalculateStationAvailableSlots(string stationId)
@@ -370,7 +393,7 @@ namespace SparkPoint_Server.Services
             // Get all active bookings (confirmed or in progress) for this station
             var activeBookingsCount = _bookingsCollection.CountDocuments(b =>
                 b.StationId == stationId &&
-                BookingStatusConstants.IsSlotReservingStatus(b.Status)
+                BookingStatusConstants.SlotReservingStatuses.Contains(b.Status)
             );
 
             var calculatedAvailableSlots = station.TotalSlots - (int)activeBookingsCount;
@@ -389,10 +412,205 @@ namespace SparkPoint_Server.Services
         {
             var station = _stationsCollection.Find(s => s.Id == stationId && s.IsActive).FirstOrDefault();
             if (station == null)
-                return StationValidationResult.Failed(ValidationMessages.StationNotFound);
+                return StationValidationResult.Failed(StationValidationError.None, ValidationMessages.StationNotFound);
 
-            return StationValidationResult.Success(station);
+            return StationValidationResult.Success();
         }
+
+        private List<BookingWithStationInfo> EnrichBookingsWithStationInfo(List<Booking> bookings)
+        {
+            if (bookings == null || !bookings.Any())
+                return new List<BookingWithStationInfo>();
+
+            // Get unique station IDs
+            var stationIds = bookings.Select(b => b.StationId).Distinct().ToList();
+
+            // Fetch all stations in one query
+            var stations = _stationsCollection.Find(s => stationIds.Contains(s.Id)).ToList();
+            var stationDict = stations.ToDictionary(s => s.Id, s => s);
+
+            // Map bookings to enriched bookings
+            return bookings.Select(booking =>
+            {
+                var enrichedBooking = new BookingWithStationInfo
+                {
+                    Id = booking.Id,
+                    OwnerNIC = booking.OwnerNIC,
+                    StationId = booking.StationId,
+                    ReservationTime = booking.ReservationTime,
+                    SlotsRequested = booking.SlotsRequested,
+                    Status = booking.Status,
+                    CreatedAt = booking.CreatedAt,
+                    UpdatedAt = booking.UpdatedAt,
+                    TimeSlotDisplay = TimeSlotConstants.GetSlotDisplayName(booking.ReservationTime),
+                    SlotEndTime = TimeSlotConstants.GetSlotEndTime(booking.ReservationTime)
+                };
+
+                // Add basic station information if available (without slot details)
+                if (stationDict.TryGetValue(booking.StationId, out var station))
+                {
+                    enrichedBooking.Station = new ChargingStationBasicInfo
+                    {
+                        Id = station.Id,
+                        Name = station.Name,
+                        Location = station.Location,
+                        Type = station.Type
+                    };
+                }
+
+                return enrichedBooking;
+            }).ToList();
+        }
+
+        private BookingWithStationInfo EnrichBookingWithStationInfo(Booking booking)
+        {
+            if (booking == null)
+                return null;
+
+            var enrichedBooking = new BookingWithStationInfo
+            {
+                Id = booking.Id,
+                OwnerNIC = booking.OwnerNIC,
+                StationId = booking.StationId,
+                ReservationTime = booking.ReservationTime,
+                SlotsRequested = booking.SlotsRequested,
+                Status = booking.Status,
+                CreatedAt = booking.CreatedAt,
+                UpdatedAt = booking.UpdatedAt,
+                TimeSlotDisplay = TimeSlotConstants.GetSlotDisplayName(booking.ReservationTime),
+                SlotEndTime = TimeSlotConstants.GetSlotEndTime(booking.ReservationTime)
+            };
+
+            // Get basic station information (without slot details)
+            var station = _stationsCollection.Find(s => s.Id == booking.StationId).FirstOrDefault();
+            if (station != null)
+            {
+                enrichedBooking.Station = new ChargingStationBasicInfo
+                {
+                    Id = station.Id,
+                    Name = station.Name,
+                    Location = station.Location,
+                    Type = station.Type
+                };
+            }
+
+            return enrichedBooking;
+        }
+
+        public NearbyStationsAvailabilityResult GetNearbyStationsAvailability(DateTime date, double? latitude, double? longitude, double radiusKm)
+        {
+            try
+            {
+                var timeSlots = TimeSlotConstants.GetAvailableTimeSlotsForDate(date);
+                var validTimeSlots = timeSlots.Where(TimeSlotConstants.IsWithinOperatingHours).ToList();
+
+                // Get all active stations
+                var stationsFilter = Builders<ChargingStation>.Filter.Eq(s => s.IsActive, true);
+                
+                // If location is provided, filter by distance
+                if (latitude.HasValue && longitude.HasValue)
+                {
+                    // For MongoDB with location queries, you would typically use $near or $geoWithin
+                    // For now, we'll get all stations and filter in memory (not optimal for large datasets)
+                    var allStations = _stationsCollection.Find(stationsFilter).ToList();
+                    
+                    var nearbyStations = allStations.Where(station => 
+                        CalculateDistance(latitude.Value, longitude.Value, 
+                                        station.Location.Latitude, station.Location.Longitude) <= radiusKm)
+                        .ToList();
+
+                    var stationAvailability = nearbyStations.Select(station => 
+                        CreateStationAvailabilityInfo(station, validTimeSlots)).ToList();
+
+                    return NearbyStationsAvailabilityResult.Success(new
+                    {
+                        Date = date.Date,
+                        UserLocation = new { Latitude = latitude.Value, Longitude = longitude.Value },
+                        RadiusKm = radiusKm,
+                        TimeSlots = validTimeSlots.Select(slot => new
+                        {
+                            StartTime = slot,
+                            EndTime = TimeSlotConstants.GetSlotEndTime(slot),
+                            DisplayName = TimeSlotConstants.GetSlotDisplayName(slot)
+                        }),
+                        Stations = stationAvailability,
+                        OperatingHours = "6:00 AM - 12:00 AM",
+                        SlotDuration = "2 hours"
+                    });
+                }
+                else
+                {
+                    // Return all active stations if no location provided
+                    var allStations = _stationsCollection.Find(stationsFilter).ToList();
+                    var stationAvailability = allStations.Select(station => 
+                        CreateStationAvailabilityInfo(station, validTimeSlots)).ToList();
+
+                    return NearbyStationsAvailabilityResult.Success(new
+                    {
+                        Date = date.Date,
+                        TimeSlots = validTimeSlots.Select(slot => new
+                        {
+                            StartTime = slot,
+                            EndTime = TimeSlotConstants.GetSlotEndTime(slot),
+                            DisplayName = TimeSlotConstants.GetSlotDisplayName(slot)
+                        }),
+                        Stations = stationAvailability,
+                        OperatingHours = "6:00 AM - 12:00 AM",
+                        SlotDuration = "2 hours"
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                return NearbyStationsAvailabilityResult.Failed($"Error retrieving nearby stations availability: {ex.Message}");
+            }
+        }
+
+        private object CreateStationAvailabilityInfo(ChargingStation station, List<DateTime> timeSlots)
+        {
+            var slotAvailability = timeSlots.Select(slot => new
+            {
+                StartTime = slot,
+                EndTime = TimeSlotConstants.GetSlotEndTime(slot),
+                DisplayName = TimeSlotConstants.GetSlotDisplayName(slot),
+                AvailableSlots = GetAvailableSlotsAtTime(station.Id, slot),
+                IsAvailable = GetAvailableSlotsAtTime(station.Id, slot) > 0
+            }).ToList();
+
+            return new
+            {
+                StationId = station.Id,
+                StationName = station.Name,
+                Location = station.Location,
+                TotalSlots = station.TotalSlots,
+                Type = station.Type,
+                TimeSlotAvailability = slotAvailability
+            };
+        }
+
+        private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
+        {
+            // Haversine formula to calculate distance between two coordinates
+            const double R = 6371; // Earth's radius in kilometers
+            
+            var dLat = ToRadians(lat2 - lat1);
+            var dLon = ToRadians(lon2 - lon1);
+            
+            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                    Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2)) *
+                    Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+            
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            
+            return R * c;
+        }
+
+        private double ToRadians(double degrees)
+        {
+            return degrees * (Math.PI / 180);
+        }
+
+        // ...existing other methods...
     }
 
     // Result classes for service operations
@@ -427,12 +645,12 @@ namespace SparkPoint_Server.Services
     public class BookingsQueryResult
     {
         public bool IsSuccess { get; private set; }
-        public List<Booking> Bookings { get; private set; }
+        public List<BookingWithStationInfo> Bookings { get; private set; }
         public string ErrorMessage { get; private set; }
 
         private BookingsQueryResult() { }
 
-        public static BookingsQueryResult Success(List<Booking> bookings)
+        public static BookingsQueryResult Success(List<BookingWithStationInfo> bookings)
         {
             return new BookingsQueryResult
             {
@@ -454,12 +672,12 @@ namespace SparkPoint_Server.Services
     public class BookingRetrievalResult
     {
         public bool IsSuccess { get; private set; }
-        public Booking Booking { get; private set; }
+        public BookingWithStationInfo Booking { get; private set; }
         public string ErrorMessage { get; private set; }
 
         private BookingRetrievalResult() { }
 
-        public static BookingRetrievalResult Success(Booking booking)
+        public static BookingRetrievalResult Success(BookingWithStationInfo booking)
         {
             return new BookingRetrievalResult
             {
@@ -505,33 +723,6 @@ namespace SparkPoint_Server.Services
         }
     }
 
-    public class StationValidationResult
-    {
-        public bool IsSuccess { get; private set; }
-        public ChargingStation Station { get; private set; }
-        public string ErrorMessage { get; private set; }
-
-        private StationValidationResult() { }
-
-        public static StationValidationResult Success(ChargingStation station)
-        {
-            return new StationValidationResult
-            {
-                IsSuccess = true,
-                Station = station
-            };
-        }
-
-        public static StationValidationResult Failed(string errorMessage)
-        {
-            return new StationValidationResult
-            {
-                IsSuccess = false,
-                ErrorMessage = errorMessage
-            };
-        }
-    }
-
     public class BookingStatusUpdateResult
     {
         public bool IsSuccess { get; private set; }
@@ -554,6 +745,33 @@ namespace SparkPoint_Server.Services
             {
                 IsSuccess = false,
                 Message = message
+            };
+        }
+    }
+
+    public class NearbyStationsAvailabilityResult
+    {
+        public bool IsSuccess { get; private set; }
+        public object Data { get; private set; }
+        public string ErrorMessage { get; private set; }
+
+        private NearbyStationsAvailabilityResult() { }
+
+        public static NearbyStationsAvailabilityResult Success(object data)
+        {
+            return new NearbyStationsAvailabilityResult
+            {
+                IsSuccess = true,
+                Data = data
+            };
+        }
+
+        public static NearbyStationsAvailabilityResult Failed(string errorMessage)
+        {
+            return new NearbyStationsAvailabilityResult
+            {
+                IsSuccess = false,
+                ErrorMessage = errorMessage
             };
         }
     }

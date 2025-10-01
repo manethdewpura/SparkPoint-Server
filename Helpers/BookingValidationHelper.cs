@@ -22,6 +22,14 @@ namespace SparkPoint_Server.Helpers
             if (!reservationTimeResult.IsValid)
                 return reservationTimeResult;
 
+            var timeSlotResult = ValidateTimeSlot(model.ReservationTime);
+            if (!timeSlotResult.IsValid)
+                return timeSlotResult;
+
+            var slotsResult = ValidateSlotsRequested(model.SlotsRequested);
+            if (!slotsResult.IsValid)
+                return slotsResult;
+
             return ValidationResult.Success();
         }
 
@@ -48,6 +56,17 @@ namespace SparkPoint_Server.Helpers
                 var reservationTimeResult = ValidateReservationTime(model.ReservationTime.Value);
                 if (!reservationTimeResult.IsValid)
                     return reservationTimeResult;
+
+                var timeSlotResult = ValidateTimeSlot(model.ReservationTime.Value);
+                if (!timeSlotResult.IsValid)
+                    return timeSlotResult;
+            }
+
+            if (model.SlotsRequested.HasValue)
+            {
+                var slotsResult = ValidateSlotsRequested(model.SlotsRequested.Value);
+                if (!slotsResult.IsValid)
+                    return slotsResult;
             }
 
             return ValidationResult.Success();
@@ -62,6 +81,28 @@ namespace SparkPoint_Server.Helpers
             
             if (daysFromNow > ApplicationConstants.MaxAdvanceReservationDays)
                 return ValidationResult.Failed(ValidationMessages.MaxAdvanceReservation);
+
+            return ValidationResult.Success();
+        }
+
+        public static ValidationResult ValidateTimeSlot(DateTime reservationTime)
+        {
+            if (!TimeSlotConstants.IsValidTimeSlot(reservationTime))
+                return ValidationResult.Failed("Invalid time slot. Please select from available time slots.");
+
+            if (!TimeSlotConstants.IsWithinOperatingHours(reservationTime))
+                return ValidationResult.Failed("Time slot is outside station operating hours (6:00 AM - 12:00 AM).");
+
+            return ValidationResult.Success();
+        }
+
+        public static ValidationResult ValidateSlotsRequested(int slotsRequested)
+        {
+            if (slotsRequested <= 0)
+                return ValidationResult.Failed("Number of slots requested must be greater than 0.");
+
+            if (slotsRequested > ApplicationConstants.MaxSlotsPerBooking)
+                return ValidationResult.Failed($"Maximum {ApplicationConstants.MaxSlotsPerBooking} slots allowed per booking.");
 
             return ValidationResult.Success();
         }

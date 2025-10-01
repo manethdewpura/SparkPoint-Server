@@ -8,6 +8,9 @@ namespace SparkPoint_Server.Constants
         public const int MinCancellationHours = 12;
         public const int MinModificationHours = 12;
 
+        // Booking constraints
+        public const int MaxSlotsPerBooking = 5;
+
         // User roles
         public const int AdminRoleId = 1;
         public const int StationUserRoleId = 2;

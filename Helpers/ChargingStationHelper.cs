@@ -134,7 +134,7 @@ namespace SparkPoint_Server.Helpers
             return Builders<Booking>.Filter.And(
                 Builders<Booking>.Filter.Eq(b => b.StationId, stationId),
                 Builders<Booking>.Filter.Not(
-                    Builders<Booking>.Filter.In(b => b.Status, new[] { "Cancelled", "Completed" })
+                    Builders<Booking>.Filter.In(b => b.Status, BookingStatusConstants.SlotFreeingStatuses)
                 )
             );
         }

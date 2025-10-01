@@ -273,7 +273,7 @@ namespace SparkPoint_Server.Services
                 var totalBookings = _bookingsCollection.CountDocuments(b => b.StationId == stationId);
                 var activeBookings = _bookingsCollection.CountDocuments(b => 
                     b.StationId == stationId && 
-                    BookingStatusConstants.IsSlotReservingStatus(b.Status));
+                    BookingStatusConstants.SlotReservingStatuses.Contains(b.Status));
 
                 var utilization = station.TotalSlots > 0 
                     ? (double)(station.TotalSlots - station.AvailableSlots) / station.TotalSlots * 100
