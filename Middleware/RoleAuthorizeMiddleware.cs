@@ -3,6 +3,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Security.Claims;
+using System.Web;
 using System.Web.Http;
 using System.Web.Http.Controllers;
 using SparkPoint_Server.Helpers;
@@ -21,15 +22,28 @@ namespace SparkPoint_Server.Attributes
 
         public override void OnAuthorization(HttpActionContext actionContext)
         {
+            string token = null;
             var authHeader = actionContext.Request.Headers.Authorization;
             
-            if (authHeader == null || authHeader.Scheme != "Bearer")
+            // First, try to get token from Authorization header
+            if (authHeader != null && authHeader.Scheme == "Bearer")
+            {
+                token = authHeader.Parameter;
+            }
+            // If no Authorization header, try to get token from cookie (for web clients)
+            else if (HttpContext.Current?.Request?.Cookies != null)
+            {
+                var cookie = HttpContext.Current.Request.Cookies[AuthConstants.AccessTokenCookieName];
+                token = cookie?.Value;
+            }
+            
+            if (string.IsNullOrEmpty(token))
             {
                 HandleUnauthorizedRequest(actionContext);
                 return;
             }
 
-            var principal = JwtHelper.ValidateToken(authHeader.Parameter);
+            var principal = JwtHelper.ValidateToken(token);
             if (principal == null)
             {
                 HandleUnauthorizedRequest(actionContext);

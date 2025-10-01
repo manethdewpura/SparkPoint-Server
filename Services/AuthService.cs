@@ -72,7 +72,7 @@ namespace SparkPoint_Server.Services
 
             var refreshContext = context ?? CreateDefaultContext();
 
-            var validationResult = _refreshTokenService.ValidateAndConsumeToken(userId, refreshToken, refreshContext);
+            var validationResult = _refreshTokenService.ValidateRefreshToken(userId, refreshToken, refreshContext);
             
             if (!validationResult.IsSuccess)
             {
@@ -80,12 +80,27 @@ namespace SparkPoint_Server.Services
             }
 
             var newAccessToken = JwtHelper.GenerateAccessToken(user);
-            var newRefreshTokenEntry = _refreshTokenService.CreateRefreshToken(
-                userId, 
-                refreshContext, 
-                validationResult.TokenEntry.TokenId
-            );
-            var newRefreshToken = newRefreshTokenEntry.TokenHash;
+            
+            // Check if refresh token is expired or close to expiring
+            var currentToken = validationResult.TokenEntry;
+            var timeUntilExpiry = currentToken.ExpiresAt - refreshContext.RequestTime;
+            var shouldRefreshToken = timeUntilExpiry.TotalDays <= AuthConstants.RefreshTokenRenewalThresholdDays;
+            
+            string newRefreshToken;
+            
+            if (shouldRefreshToken)
+            {
+                // Create new refresh token and mark old one as used
+                _refreshTokenService.MarkTokenAsUsed(currentToken.TokenId, refreshContext.RequestTime);
+                var newTokenEntry = _refreshTokenService.CreateRefreshToken(userId, refreshContext, currentToken.TokenId);
+                newRefreshToken = newTokenEntry.TokenHash;
+            }
+            else
+            {
+                // Keep existing refresh token and update last used time
+                _refreshTokenService.UpdateTokenLastUsed(currentToken.TokenId, refreshContext.RequestTime);
+                newRefreshToken = refreshToken;
+            }
 
             return TokenRefreshResult.Success(newAccessToken, newRefreshToken);
         }
@@ -98,7 +113,10 @@ namespace SparkPoint_Server.Services
             }
             else
             {
-                var userTokens = _refreshTokenService.GetActiveUserTokens(userId);
+                var userTokens = _refreshTokensCollection
+                    .Find(t => t.UserId == userId && !t.IsRevoked)
+                    .ToList();
+
                 foreach (var token in userTokens)
                 {
                     if (TokenSecurityUtils.VerifyToken(refreshToken, token.TokenHash, token.Salt))
@@ -200,19 +218,25 @@ namespace SparkPoint_Server.Services
                     { 
                         user.Id, 
                         user.Username, 
-                        user.Email, 
+                        user.Email,
+                        user.FirstName,
+                        user.LastName,
                         RoleId = user.RoleId,
                         RoleName = AuthUtils.GetRoleName(user.RoleId),
-                        NIC = evOwner.NIC 
+                        NIC = evOwner.NIC,
+                        Phone = evOwner.Phone
                     };
                 }
             }
 
+            // For Admin and Station Users, include FirstName and LastName
             return new 
             { 
                 user.Id, 
                 user.Username, 
-                user.Email, 
+                user.Email,
+                user.FirstName,
+                user.LastName,
                 RoleId = user.RoleId,
                 RoleName = AuthUtils.GetRoleName(user.RoleId)
             };

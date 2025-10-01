@@ -95,6 +95,37 @@ namespace SparkPoint_Server.Services
             return RefreshTokenValidationResult.Success(matchingToken);
         }
 
+        public RefreshTokenValidationResult ValidateRefreshToken(string userId, string token, RefreshTokenContext context)
+        {
+            var userTokens = _refreshTokensCollection
+                .Find(t => t.UserId == userId && !t.IsRevoked)
+                .ToList();
+
+            RefreshTokenEntry matchingToken = null;
+
+            foreach (var tokenEntry in userTokens)
+            {
+                if (TokenSecurityUtils.VerifyToken(token, tokenEntry.TokenHash, tokenEntry.Salt))
+                {
+                    matchingToken = tokenEntry;
+                    break;
+                }
+            }
+
+            if (matchingToken == null)
+            {
+                return RefreshTokenValidationResult.Failed(TokenRefreshStatus.InvalidRefreshToken);
+            }
+
+            if (matchingToken.IsExpired)
+            {
+                RevokeToken(matchingToken.TokenId, TokenRevocationReason.ExpiredCleanup);
+                return RefreshTokenValidationResult.Failed(TokenRefreshStatus.ExpiredRefreshToken);
+            }
+
+            return RefreshTokenValidationResult.Success(matchingToken);
+        }
+
         public void RevokeToken(string tokenId, TokenRevocationReason reason)
         {
             var update = Builders<RefreshTokenEntry>.Update
@@ -129,7 +160,7 @@ namespace SparkPoint_Server.Services
         {
 			var now = DateTime.UtcNow;
 			return _refreshTokensCollection
-				.Find(t => t.UserId == userId && !t.IsRevoked && !t.IsUsed && t.ExpiresAt > now)
+				.Find(t => t.UserId == userId && !t.IsRevoked && t.ExpiresAt > now)
                 .SortByDescending(t => t.CreatedAt)
                 .ToList();
         }
@@ -143,11 +174,19 @@ namespace SparkPoint_Server.Services
             _refreshTokensCollection.DeleteMany(t => t.IsRevoked && t.RevokedAt < cutoffDate);
         }
 
-        private void MarkTokenAsUsed(string tokenId, DateTime usedAt)
+        public void MarkTokenAsUsed(string tokenId, DateTime usedAt)
         {
             var update = Builders<RefreshTokenEntry>.Update
                 .Set(t => t.IsUsed, true)
                 .Set(t => t.UsedAt, usedAt)
+                .Set(t => t.LastUsedAt, usedAt);
+
+            _refreshTokensCollection.UpdateOne(t => t.TokenId == tokenId, update);
+        }
+
+        public void UpdateTokenLastUsed(string tokenId, DateTime usedAt)
+        {
+            var update = Builders<RefreshTokenEntry>.Update
                 .Set(t => t.LastUsedAt, usedAt);
 
             _refreshTokensCollection.UpdateOne(t => t.TokenId == tokenId, update);

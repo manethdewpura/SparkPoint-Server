@@ -49,6 +49,47 @@ namespace SparkPoint_Server.Controllers
         }
 
         [HttpGet]
+        [Route("cors")]
+        public IHttpActionResult TestCors()
+        {
+            try
+            {
+                var corsOrigins = Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS");
+                var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
+                
+                return Ok(new
+                {
+                    Status = "OK",
+                    Message = "CORS test endpoint",
+                    CorsOriginsFromEnv = corsOrigins,
+                    HasJwtSecret = !string.IsNullOrEmpty(jwtSecret),
+                    Timestamp = DateTime.UtcNow,
+                    Environment = Environment.GetEnvironmentVariable("ENVIRONMENT") ?? 
+                                 System.Configuration.ConfigurationManager.AppSettings["Environment"] ?? 
+                                 "Development"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"CORS test failed: {ex.Message}");
+            }
+        }
+
+        [HttpOptions]
+        [Route("")]
+        public IHttpActionResult Options()
+        {
+            return Ok();
+        }
+
+        [HttpOptions]
+        [Route("cors")]
+        public IHttpActionResult OptionsCors()
+        {
+            return Ok();
+        }
+
+        [HttpGet]
         [Route("detailed")]
         public async Task<IHttpActionResult> GetDetailedHealth()
         {

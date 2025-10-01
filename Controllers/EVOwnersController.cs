@@ -33,7 +33,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
-        [HttpPut]
+        [HttpPatch]
         [Route("update")]
         [EVOwnerOnly]
         [OwnAccountMiddleware]
@@ -53,7 +53,29 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
-        [HttpPut]
+        [HttpPatch]
+        [Route("update/{nic}")]
+        [AdminAndStationUser]
+        [OwnAccountMiddleware("nic")]
+        public IHttpActionResult UpdateProfileByNic(string nic, EVOwnerUpdateModel model)
+        {
+            if (string.IsNullOrEmpty(nic))
+                return BadRequest("NIC is required.");
+
+            if (model == null)
+                return BadRequest("Update data is required.");
+
+            var result = _evOwnerService.UpdateProfileByNIC(nic, model);
+            
+            if (!result.IsSuccess)
+            {
+                return GetErrorResponse(result.Status, result.Message);
+            }
+
+            return Ok(result.Message);
+        }
+
+        [HttpPatch]
         [Route("deactivate")]
         [EVOwnerOnly]
         [OwnAccountMiddleware]
@@ -73,7 +95,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
-        [HttpPut]
+        [HttpPatch]
         [Route("reactivate/{nic}")]
         [AdminOnly]
         [OwnAccountMiddleware("nic")]

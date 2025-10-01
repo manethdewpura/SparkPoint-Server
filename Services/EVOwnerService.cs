@@ -289,5 +289,68 @@ namespace SparkPoint_Server.Services
                 return null;
             }
         }
+
+        public EVOwnerOperationResult UpdateProfileByNIC(string nic, EVOwnerUpdateModel model)
+        {
+            var validationResult = UserUtils.ValidateEVOwnerUpdateModel(model);
+            if (!validationResult.IsValid)
+            {
+                return EVOwnerOperationResult.Failed(EVOwnerOperationStatus.ValidationFailed, validationResult.ErrorMessage);
+            }
+
+            try
+            {
+                var evOwner = _evOwnersCollection.Find(o => o.NIC == nic).FirstOrDefault();
+                if (evOwner == null)
+                {
+                    return EVOwnerOperationResult.Failed(EVOwnerOperationStatus.EVOwnerNotFound);
+                }
+
+                var currentUser = _usersCollection.Find(u => u.Id == evOwner.UserId).FirstOrDefault();
+                if (currentUser == null)
+                {
+                    return EVOwnerOperationResult.Failed(EVOwnerOperationStatus.UserNotFound);
+                }
+
+                // Check for email conflicts with other users (excluding current user)
+                if (!string.IsNullOrEmpty(model.Email) && model.Email != currentUser.Email)
+                {
+                    if (_usersCollection.Find(u => u.Email == model.Email && u.Id != currentUser.Id).Any())
+                    {
+                        return EVOwnerOperationResult.Failed(EVOwnerOperationStatus.EmailExists);
+                    }
+                }
+
+                // Check for phone conflicts with other EV owners (excluding current EV owner)
+                if (!string.IsNullOrEmpty(model.Phone) && model.Phone != evOwner.Phone)
+                {
+                    if (_evOwnersCollection.Find(o => o.Phone == model.Phone && o.NIC != nic).Any())
+                    {
+                        return EVOwnerOperationResult.Failed(EVOwnerOperationStatus.PhoneExists);
+                    }
+                }
+
+                // Update User information
+                var userUpdateBuilder = UserUpdateHelper.BuildUserUpdate(new UserUpdateModel
+                {
+                    FirstName = model.FirstName,
+                    LastName = model.LastName,
+                    Email = model.Email,
+                    Password = model.Password
+                });
+
+                _usersCollection.UpdateOne(u => u.Id == evOwner.UserId, userUpdateBuilder);
+
+                // Update EVOwner information
+                var evOwnerUpdateBuilder = UserUpdateHelper.BuildEVOwnerUpdate(model);
+                _evOwnersCollection.UpdateOne(o => o.NIC == nic, evOwnerUpdateBuilder);
+
+                return EVOwnerOperationResult.Success(EVOwnerConstants.ProfileUpdatedSuccessfully);
+            }
+            catch (Exception ex)
+            {
+                return EVOwnerOperationResult.Failed(EVOwnerOperationStatus.Failed, ex.Message);
+            }
+        }
     }
 }

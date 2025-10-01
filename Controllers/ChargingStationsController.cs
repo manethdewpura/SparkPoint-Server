@@ -36,7 +36,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpGet]
         [Route("")]
-        [AdminOnly]
+        [AllRoles]
         public IHttpActionResult GetStations([FromUri] StationFilterModel filter = null)
         {
             var result = _chargingStationService.GetStations(filter);
@@ -51,7 +51,7 @@ namespace SparkPoint_Server.Controllers
 
         [HttpGet]
         [Route("{stationId}")]
-        [AdminOnly]
+        [AllRoles]
         public IHttpActionResult GetStation(string stationId)
         {
             var result = _chargingStationService.GetStation(stationId);
@@ -62,7 +62,6 @@ namespace SparkPoint_Server.Controllers
             }
 
             var response = ChargingStationUtils.CreateDetailedStationResponse(result.Station, null);
-            // Replace null with actual station users from result
             var responseWithUsers = new
             {
                 Station = result.Station,
@@ -72,7 +71,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(responseWithUsers);
         }
 
-        [HttpPut]
+        [HttpPatch]
         [Route("{stationId}")]
         [AdminOnly]
         public IHttpActionResult UpdateStation(string stationId, StationUpdateModel model)
@@ -87,7 +86,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
-        [HttpPut]
+        [HttpPatch]
         [Route("activate/{stationId}")]
         [AdminOnly]
         public IHttpActionResult ActivateStation(string stationId)
@@ -102,7 +101,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
-        [HttpPut]
+        [HttpPatch]
         [Route("deactivate/{stationId}")]
         [AdminOnly]
         public IHttpActionResult DeactivateStation(string stationId)

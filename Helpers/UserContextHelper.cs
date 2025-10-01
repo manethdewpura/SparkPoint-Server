@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Web;
 using System.Web.Http;
 using SparkPoint_Server.Constants;
 using SparkPoint_Server.Helpers;
@@ -24,13 +25,30 @@ namespace SparkPoint_Server.Helpers
             };
         }
 
+        private static string GetAccessToken(ApiController controller)
+        {
+            // First, try to get token from Authorization header
+            var authHeader = controller.Request.Headers.Authorization;
+            if (authHeader != null && authHeader.Scheme == "Bearer")
+                return authHeader.Parameter;
+
+            // If no Authorization header, try to get token from cookie (for web clients)
+            if (HttpContext.Current?.Request?.Cookies != null)
+            {
+                var cookie = HttpContext.Current.Request.Cookies[AuthConstants.AccessTokenCookieName];
+                return cookie?.Value;
+            }
+
+            return null;
+        }
+
         public static string GetCurrentUserId(ApiController controller)
         {
-            var authHeader = controller.Request.Headers.Authorization;
-            if (authHeader == null || authHeader.Scheme != "Bearer")
+            var token = GetAccessToken(controller);
+            if (string.IsNullOrEmpty(token))
                 return null;
 
-            var principal = JwtHelper.ValidateToken(authHeader.Parameter);
+            var principal = JwtHelper.ValidateToken(token);
             if (principal == null)
                 return null;
 
@@ -39,11 +57,11 @@ namespace SparkPoint_Server.Helpers
 
         public static string GetCurrentUserRole(ApiController controller)
         {
-            var authHeader = controller.Request.Headers.Authorization;
-            if (authHeader == null || authHeader.Scheme != "Bearer")
+            var token = GetAccessToken(controller);
+            if (string.IsNullOrEmpty(token))
                 return null;
 
-            var principal = JwtHelper.ValidateToken(authHeader.Parameter);
+            var principal = JwtHelper.ValidateToken(token);
             if (principal == null)
                 return null;
 
@@ -52,11 +70,11 @@ namespace SparkPoint_Server.Helpers
 
         public static string GetCurrentUsername(ApiController controller)
         {
-            var authHeader = controller.Request.Headers.Authorization;
-            if (authHeader == null || authHeader.Scheme != "Bearer")
+            var token = GetAccessToken(controller);
+            if (string.IsNullOrEmpty(token))
                 return null;
 
-            var principal = JwtHelper.ValidateToken(authHeader.Parameter);
+            var principal = JwtHelper.ValidateToken(token);
             if (principal == null)
                 return null;
 

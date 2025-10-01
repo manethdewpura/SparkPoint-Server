@@ -10,8 +10,9 @@ namespace SparkPoint_Server.Constants
         public static readonly string Issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "SparkPoint_Server";
         public static readonly string Audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "SparkPoint_Client";
         
-        public const int AccessTokenExpiryMinutes = 15;
+        public const int AccessTokenExpiryMinutes = 600; //changed for easy teting, should be 15 in production
         public const int RefreshTokenExpiryDays = 30;
+        public const int RefreshTokenRenewalThresholdDays = 7; // Renew refresh token if less than 7 days remaining
 
         public const string InvalidCredentials = "Invalid username or password";
         public const string UserNotFound = "User not found";
@@ -36,5 +37,16 @@ namespace SparkPoint_Server.Constants
         public const int MaxRefreshTokensPerUser = 10;
         public const int TokenCleanupIntervalHours = 24;
         public const int RevokedTokenRetentionDays = 7;
+
+        // HTTP-only cookie constants
+        public const string RefreshTokenCookieName = "refreshToken";
+        public const string RefreshTokenCookiePath = "/api/auth";
+        public const string AccessTokenCookieName = "accessToken";
+        public const string AccessTokenCookiePath = "/";
+        
+        // Web client detection - more permissive for development with wildcard CORS
+        public static readonly string[] WebBrowserUserAgents = { "Mozilla", "Chrome", "Safari", "Firefox", "Edge" };
+        // Using wildcard to allow any web origin - will use CORS config for actual security
+        public static readonly string[] AllowedWebOrigins = { "*" };
     }
 }

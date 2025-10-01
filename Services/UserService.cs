@@ -44,7 +44,7 @@ namespace SparkPoint_Server.Services
                     LastName = UserUtils.SanitizeString(model.LastName),
                     PasswordHash = PasswordUtils.HashPassword(model.Password),
                     RoleId = ApplicationConstants.AdminRoleId,
-                    IsActive = true,
+                    IsActive = false,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
