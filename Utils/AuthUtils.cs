@@ -22,21 +22,6 @@ namespace SparkPoint_Server.Utils
             }
         }
 
-        public static UserRole GetUserRoleEnum(int roleId)
-        {
-            switch (roleId)
-            {
-                case ApplicationConstants.AdminRoleId:
-                    return UserRole.Admin;
-                case ApplicationConstants.StationUserRoleId:
-                    return UserRole.StationUser;
-                case ApplicationConstants.EVOwnerRoleId:
-                    return UserRole.EVOwner;
-                default:
-                    return UserRole.EVOwner;
-            }
-        }
-
         public static bool IsValidRoleId(int roleId)
         {
             return roleId == ApplicationConstants.AdminRoleId ||

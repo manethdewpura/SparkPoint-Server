@@ -70,7 +70,7 @@ namespace SparkPoint_Server.Constants
         {
             var timeOfDay = slotStartTime.TimeOfDay;
             var slotEndTime = slotStartTime.AddHours(SlotDurationHours).TimeOfDay;
-            S
+
             if (slotEndTime == TimeSpan.Zero)
                 slotEndTime = new TimeSpan(24, 0, 0);
                 

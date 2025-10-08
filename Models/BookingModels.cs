@@ -60,6 +60,11 @@ namespace SparkPoint_Server.Models
         public string Id { get; set; }
         public string Name { get; set; }
         public LocationCoordinates Location { get; set; }
+        public string Address { get; set; }
+        public string City { get; set; }
+        public string Province { get; set; }
+        public string ContactPhone { get; set; }
+        public string ContactEmail { get; set; }
         public string Type { get; set; }
     }
 
@@ -68,6 +73,11 @@ namespace SparkPoint_Server.Models
         public string Id { get; set; }
         public string Name { get; set; }
         public LocationCoordinates Location { get; set; }
+        public string Address { get; set; }
+        public string City { get; set; }
+        public string Province { get; set; }
+        public string ContactPhone { get; set; }
+        public string ContactEmail { get; set; }
         public string Type { get; set; }
         public int TotalSlots { get; set; }
         public int AvailableSlots { get; set; }

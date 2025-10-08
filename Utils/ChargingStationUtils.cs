@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using SparkPoint_Server.Constants;
 using SparkPoint_Server.Enums;
 using SparkPoint_Server.Models;
@@ -29,6 +30,31 @@ namespace SparkPoint_Server.Utils
             {
                 var coordinateErrors = ValidateLocationCoordinates(model.Location);
                 errors.AddRange(coordinateErrors);
+            }
+
+            // Validate address (optional)
+            if (!string.IsNullOrEmpty(model.Address) && model.Address.Length > ChargingStationConstants.MaxAddressLength)
+                errors.Add(StationValidationError.AddressTooLong);
+
+            // Validate city (optional)
+            if (!string.IsNullOrEmpty(model.City) && model.City.Length > ChargingStationConstants.MaxCityLength)
+                errors.Add(StationValidationError.CityTooLong);
+
+            // Validate province (optional)
+            if (!string.IsNullOrEmpty(model.Province) && model.Province.Length > ChargingStationConstants.MaxProvinceLength)
+                errors.Add(StationValidationError.ProvinceTooLong);
+
+            // Validate contact phone (optional)
+            if (!string.IsNullOrEmpty(model.ContactPhone) && model.ContactPhone.Length > ChargingStationConstants.MaxContactPhoneLength)
+                errors.Add(StationValidationError.ContactPhoneTooLong);
+
+            // Validate contact email (optional)
+            if (!string.IsNullOrEmpty(model.ContactEmail))
+            {
+                if (model.ContactEmail.Length > ChargingStationConstants.MaxContactEmailLength)
+                    errors.Add(StationValidationError.ContactEmailTooLong);
+                else if (!IsValidEmail(model.ContactEmail))
+                    errors.Add(StationValidationError.InvalidContactEmail);
             }
 
             if (string.IsNullOrEmpty(model.Type))
@@ -63,6 +89,31 @@ namespace SparkPoint_Server.Utils
             {
                 var coordinateErrors = ValidateLocationCoordinates(model.Location);
                 errors.AddRange(coordinateErrors);
+            }
+
+            // Validate address if provided
+            if (!string.IsNullOrEmpty(model.Address) && model.Address.Length > ChargingStationConstants.MaxAddressLength)
+                errors.Add(StationValidationError.AddressTooLong);
+
+            // Validate city if provided
+            if (!string.IsNullOrEmpty(model.City) && model.City.Length > ChargingStationConstants.MaxCityLength)
+                errors.Add(StationValidationError.CityTooLong);
+
+            // Validate province if provided
+            if (!string.IsNullOrEmpty(model.Province) && model.Province.Length > ChargingStationConstants.MaxProvinceLength)
+                errors.Add(StationValidationError.ProvinceTooLong);
+
+            // Validate contact phone if provided
+            if (!string.IsNullOrEmpty(model.ContactPhone) && model.ContactPhone.Length > ChargingStationConstants.MaxContactPhoneLength)
+                errors.Add(StationValidationError.ContactPhoneTooLong);
+
+            // Validate contact email if provided
+            if (!string.IsNullOrEmpty(model.ContactEmail))
+            {
+                if (model.ContactEmail.Length > ChargingStationConstants.MaxContactEmailLength)
+                    errors.Add(StationValidationError.ContactEmailTooLong);
+                else if (!IsValidEmail(model.ContactEmail))
+                    errors.Add(StationValidationError.InvalidContactEmail);
             }
 
             if (!string.IsNullOrEmpty(model.Type))
@@ -106,6 +157,23 @@ namespace SparkPoint_Server.Utils
             return ChargingStationConstants.ValidStationTypes.Contains(type, StringComparer.OrdinalIgnoreCase);
         }
 
+        public static bool IsValidEmail(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return false;
+
+            try
+            {
+                // Use regex pattern for email validation
+                var emailPattern = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
+                return Regex.IsMatch(email, emailPattern, RegexOptions.IgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public static int CalculateNewAvailableSlots(int currentAvailable, int currentTotal, int newTotal)
         {
             var usedSlots = currentTotal - currentAvailable;
@@ -145,6 +213,46 @@ namespace SparkPoint_Server.Utils
                 return null;
 
             return name.Trim();
+        }
+
+        public static string SanitizeAddress(string address)
+        {
+            if (string.IsNullOrWhiteSpace(address))
+                return null;
+
+            return address.Trim();
+        }
+
+        public static string SanitizeCity(string city)
+        {
+            if (string.IsNullOrWhiteSpace(city))
+                return null;
+
+            return city.Trim();
+        }
+
+        public static string SanitizeProvince(string province)
+        {
+            if (string.IsNullOrWhiteSpace(province))
+                return null;
+
+            return province.Trim();
+        }
+
+        public static string SanitizeContactPhone(string contactPhone)
+        {
+            if (string.IsNullOrWhiteSpace(contactPhone))
+                return null;
+
+            return contactPhone.Trim();
+        }
+
+        public static string SanitizeContactEmail(string contactEmail)
+        {
+            if (string.IsNullOrWhiteSpace(contactEmail))
+                return null;
+
+            return contactEmail.Trim().ToLowerInvariant();
         }
 
         public static LocationCoordinates SanitizeLocation(LocationCoordinates location)

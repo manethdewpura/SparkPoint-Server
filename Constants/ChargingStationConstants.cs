@@ -17,6 +17,12 @@ namespace SparkPoint_Server.Constants
         public const string StationAlreadyActive = "Charging station is already active.";
         public const string StationAlreadyDeactivated = "Charging station is already deactivated.";
         public const string CannotDeactivateWithActiveBookings = "Cannot deactivate station. There are active bookings for this station.";
+        public const string AddressTooLong = "Address cannot exceed 200 characters.";
+        public const string CityTooLong = "City cannot exceed 100 characters.";
+        public const string ProvinceTooLong = "Province cannot exceed 100 characters.";
+        public const string ContactPhoneTooLong = "Contact phone cannot exceed 15 characters.";
+        public const string ContactEmailTooLong = "Contact email cannot exceed 100 characters.";
+        public const string InvalidContactEmail = "Invalid contact email format.";
         
         // Success Messages
         public const string StationCreatedSuccessfully = "Charging station created successfully.";
@@ -33,6 +39,11 @@ namespace SparkPoint_Server.Constants
         public const int MaxTotalSlots = 100;
         public const int MaxNameLength = 100;
         public const int MaxTypeLength = 50;
+        public const int MaxAddressLength = 200;
+        public const int MaxCityLength = 100;
+        public const int MaxProvinceLength = 100;
+        public const int MaxContactPhoneLength = 15;
+        public const int MaxContactEmailLength = 100;
         public const double MinLongitude = -180.0;
         public const double MaxLongitude = 180.0;
         public const double MinLatitude = -90.0;
@@ -45,6 +56,9 @@ namespace SparkPoint_Server.Constants
         public const string NameField = "name";
         public const string LocationField = "location";
         public const string TypeField = "type";
+        public const string AddressField = "address";
+        public const string CityField = "city";
+        public const string ProvinceField = "province";
         
         // Default Values
         public const bool DefaultIsActiveStatus = true;

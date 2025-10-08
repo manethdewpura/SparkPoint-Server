@@ -10,9 +10,9 @@ namespace SparkPoint_Server.Constants
         public static readonly string Issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "SparkPoint_Server";
         public static readonly string Audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "SparkPoint_Client";
         
-        public const int AccessTokenExpiryMinutes = 600; //changed for easy teting, should be 15 in production
+        public const int AccessTokenExpiryMinutes = 11;
         public const int RefreshTokenExpiryDays = 30;
-        public const int RefreshTokenRenewalThresholdDays = 7; // Renew refresh token if less than 7 days remaining
+        public const int RefreshTokenRenewalThresholdDays = 7;
 
         public const string InvalidCredentials = "Invalid username or password";
         public const string UserNotFound = "User not found";
@@ -22,7 +22,8 @@ namespace SparkPoint_Server.Constants
         public const string TokenFamilyRevoked = "Token family has been revoked due to security concerns";
         public const string UserAccountInactive = "User account is inactive";
         public const string EVOwnerAccountDeactivated = "Your EV Owner account has been deactivated. Please contact a back-office officer for reactivation.";
-        
+        public const string StationDeactivated = "Your station has been deactivated";
+
         public const string UsernamePasswordRequired = "Username and password are required";
         public const string UserIdRefreshTokenRequired = "UserId and RefreshToken are required";
         

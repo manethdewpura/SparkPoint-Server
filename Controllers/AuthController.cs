@@ -230,12 +230,12 @@ namespace SparkPoint_Server.Controllers
             switch (status)
             {
                 case AuthenticationStatus.InvalidCredentials:
-                    return Unauthorized();
+                    return BadRequest(errorMessage);
                 case AuthenticationStatus.UserInactive:
                 case AuthenticationStatus.EVOwnerDeactivated:
                     return BadRequest(errorMessage);
                 case AuthenticationStatus.UserNotFound:
-                    return Unauthorized();
+                    return BadRequest(errorMessage);
                 default:
                     return BadRequest(errorMessage);
             }

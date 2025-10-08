@@ -1,13 +1,14 @@
+using MongoDB.Driver;
+using SparkPoint_Server.Constants;
+using SparkPoint_Server.Enums;
+using SparkPoint_Server.Helpers;
+using SparkPoint_Server.Models;
+using SparkPoint_Server.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
-using MongoDB.Driver;
-using SparkPoint_Server.Models;
-using SparkPoint_Server.Helpers;
-using SparkPoint_Server.Utils;
-using SparkPoint_Server.Constants;
-using SparkPoint_Server.Enums;
+using static System.Collections.Specialized.BitVector32;
 
 namespace SparkPoint_Server.Services
 {
@@ -44,6 +45,18 @@ namespace SparkPoint_Server.Services
             {
                 var status = GetInactiveUserStatus(user);
                 return Models.AuthenticationResult.Failed(status);
+            }
+            if (AuthUtils.IsStationUser(user.RoleId))
+            {
+                if(user.ChargingStationId == null)
+                {
+                    return Models.AuthenticationResult.Failed(AuthenticationStatus.Failed);
+                }
+                var station = new ChargingStationService().GetStation(user.ChargingStationId);
+                if(station == null || !station.Station.IsActive)
+                {
+                    return Models.AuthenticationResult.Failed(AuthenticationStatus.StationDeactivated);
+                }
             }
 
             var accessToken = JwtHelper.GenerateAccessToken(user);
@@ -229,7 +242,23 @@ namespace SparkPoint_Server.Services
                 }
             }
 
-            // For Admin and Station Users, include FirstName and LastName
+            // For Station Users, include ChargingStationId
+            if (AuthUtils.IsStationUser(user.RoleId))
+            {
+                return new 
+                { 
+                    user.Id, 
+                    user.Username, 
+                    user.Email,
+                    user.FirstName,
+                    user.LastName,
+                    RoleId = user.RoleId,
+                    RoleName = AuthUtils.GetRoleName(user.RoleId),
+                    ChargingStationId = user.ChargingStationId
+                };
+            }
+
+            // For Admin Users
             return new 
             { 
                 user.Id, 

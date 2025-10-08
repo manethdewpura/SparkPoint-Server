@@ -146,6 +146,8 @@ namespace SparkPoint_Server.Models
                     return AuthConstants.EVOwnerAccountDeactivated;
                 case AuthenticationStatus.UserNotFound:
                     return AuthConstants.UserNotFound;
+                case AuthenticationStatus.StationDeactivated:
+                    return AuthConstants.StationDeactivated;
                 default:
                     return "Authentication failed";
             }

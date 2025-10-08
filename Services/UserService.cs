@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using MongoDB.Driver;
 using SparkPoint_Server.Models;
 using SparkPoint_Server.Helpers;
@@ -44,7 +45,7 @@ namespace SparkPoint_Server.Services
                     LastName = UserUtils.SanitizeString(model.LastName),
                     PasswordHash = PasswordUtils.HashPassword(model.Password),
                     RoleId = ApplicationConstants.AdminRoleId,
-                    IsActive = false,
+                    IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -197,7 +198,14 @@ namespace SparkPoint_Server.Services
                     return UserRetrievalResult.Failed(UserConstants.NotStationUser);
                 }
 
-                var profile = UserUtils.CreateStationUserProfile(stationUser);
+                ChargingStation stationDetails = null;
+                if (!string.IsNullOrEmpty(stationUser.ChargingStationId))
+                {
+                    stationDetails = _stationsCollection.Find(s => s.Id == stationUser.ChargingStationId).FirstOrDefault();
+                }
+
+                var profile = UserUtils.CreateStationUserProfileWithStation(stationUser, stationDetails);
+
                 return UserRetrievalResult.Success(profile);
             }
             catch (Exception ex)
@@ -277,6 +285,33 @@ namespace SparkPoint_Server.Services
             catch
             {
                 return false;
+            }
+        }
+
+        public UserRetrievalResult GetAllStationUsers(UserListFilterModel filter = null)
+        {
+            try
+            {
+                // Build the base filter for station users only
+                var stationUserFilter = Builders<User>.Filter.Eq(u => u.RoleId, ApplicationConstants.StationUserRoleId);
+                
+                // Apply additional filters if provided
+                var combinedFilter = stationUserFilter;
+                if (filter != null)
+                {
+                    var additionalFilter = UserFilterHelper.BuildUserFilter(filter);
+                    combinedFilter = Builders<User>.Filter.And(stationUserFilter, additionalFilter);
+                }
+
+                var stationUsers = _usersCollection.Find(combinedFilter).ToList();
+
+                var userProfiles = stationUsers.Select(UserUtils.CreateStationUserProfile).ToList();
+                
+                return UserRetrievalResult.Success(userProfiles);
+            }
+            catch (Exception ex)
+            {
+                return UserRetrievalResult.Failed(ex.Message);
             }
         }
     }

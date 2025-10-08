@@ -41,6 +41,11 @@ namespace SparkPoint_Server.Services
                 {
                     Name = ChargingStationUtils.SanitizeName(model.Name),
                     Location = ChargingStationUtils.SanitizeLocation(model.Location),
+                    Address = ChargingStationUtils.SanitizeAddress(model.Address),
+                    City = ChargingStationUtils.SanitizeCity(model.City),
+                    Province = ChargingStationUtils.SanitizeProvince(model.Province),
+                    ContactPhone = ChargingStationUtils.SanitizeContactPhone(model.ContactPhone),
+                    ContactEmail = ChargingStationUtils.SanitizeContactEmail(model.ContactEmail),
                     Type = ChargingStationUtils.SanitizeType(model.Type),
                     TotalSlots = model.TotalSlots,
                     AvailableSlots = model.TotalSlots,

@@ -7,7 +7,8 @@ namespace SparkPoint_Server.Enums
         UserInactive,
         EVOwnerDeactivated,
         UserNotFound,
-        Failed
+        Failed,
+        StationDeactivated
     }
 
     public enum TokenRefreshStatus

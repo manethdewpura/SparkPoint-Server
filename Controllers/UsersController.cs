@@ -164,6 +164,21 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
+        [HttpGet]
+        [Route("station-users")]
+        [AdminOnly]
+        public IHttpActionResult GetAllStationUsers([FromUri] UserListFilterModel filter = null)
+        {
+            var result = _userService.GetAllStationUsers(filter);
+            
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result.ErrorMessage);
+            }
+
+            return Ok(result.UserProfile);
+        }
+
         private IHttpActionResult GetErrorResponse(UserOperationStatus status, string errorMessage)
         {
             switch (status)

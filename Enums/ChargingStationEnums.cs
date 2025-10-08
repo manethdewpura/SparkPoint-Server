@@ -50,6 +50,12 @@ namespace SparkPoint_Server.Enums
         TypeRequired,
         InvalidType,
         TotalSlotsMustBePositive,
-        TotalSlotsExceedsMaximum
+        TotalSlotsExceedsMaximum,
+        AddressTooLong,
+        CityTooLong,
+        ProvinceTooLong,
+        ContactPhoneTooLong,
+        ContactEmailTooLong,
+        InvalidContactEmail
     }
 }

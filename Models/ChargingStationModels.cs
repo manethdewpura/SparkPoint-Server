@@ -20,6 +20,21 @@ namespace SparkPoint_Server.Models
         [BsonElement("location")]
         public LocationCoordinates Location { get; set; }
 
+        [BsonElement("address")]
+        public string Address { get; set; }
+
+        [BsonElement("city")]
+        public string City { get; set; }
+
+        [BsonElement("province")]
+        public string Province { get; set; }
+
+        [BsonElement("contactPhone")]
+        public string ContactPhone { get; set; }
+
+        [BsonElement("contactEmail")]
+        public string ContactEmail { get; set; }
+
         [BsonElement("type")]
         public string Type { get; set; }
 
@@ -69,6 +84,22 @@ namespace SparkPoint_Server.Models
         [Required(ErrorMessage = "Location coordinates are required")]
         public LocationCoordinates Location { get; set; }
 
+        [StringLength(200, ErrorMessage = "Address cannot exceed 200 characters")]
+        public string Address { get; set; }
+
+        [StringLength(100, ErrorMessage = "City cannot exceed 100 characters")]
+        public string City { get; set; }
+
+        [StringLength(100, ErrorMessage = "Province cannot exceed 100 characters")]
+        public string Province { get; set; }
+
+        [StringLength(15, ErrorMessage = "Contact phone cannot exceed 15 characters")]
+        public string ContactPhone { get; set; }
+
+        [EmailAddress(ErrorMessage = "Invalid email format")]
+        [StringLength(100, ErrorMessage = "Contact email cannot exceed 100 characters")]
+        public string ContactEmail { get; set; }
+
         [Required(ErrorMessage = "Type is required")]
         [StringLength(50, ErrorMessage = "Type cannot exceed 50 characters")]
         public string Type { get; set; }
@@ -83,6 +114,22 @@ namespace SparkPoint_Server.Models
         public string Name { get; set; }
 
         public LocationCoordinates Location { get; set; }
+
+        [StringLength(200, ErrorMessage = "Address cannot exceed 200 characters")]
+        public string Address { get; set; }
+
+        [StringLength(100, ErrorMessage = "City cannot exceed 100 characters")]
+        public string City { get; set; }
+
+        [StringLength(100, ErrorMessage = "Province cannot exceed 100 characters")]
+        public string Province { get; set; }
+
+        [StringLength(15, ErrorMessage = "Contact phone cannot exceed 15 characters")]
+        public string ContactPhone { get; set; }
+
+        [EmailAddress(ErrorMessage = "Invalid email format")]
+        [StringLength(100, ErrorMessage = "Contact email cannot exceed 100 characters")]
+        public string ContactEmail { get; set; }
 
         [StringLength(50, ErrorMessage = "Type cannot exceed 50 characters")]
         public string Type { get; set; }
@@ -276,6 +323,18 @@ namespace SparkPoint_Server.Models
                     return ChargingStationConstants.TotalSlotsMustBePositive;
                 case StationValidationError.TotalSlotsExceedsMaximum:
                     return $"Total slots cannot exceed {ChargingStationConstants.MaxTotalSlots}";
+                case StationValidationError.AddressTooLong:
+                    return ChargingStationConstants.AddressTooLong;
+                case StationValidationError.CityTooLong:
+                    return ChargingStationConstants.CityTooLong;
+                case StationValidationError.ProvinceTooLong:
+                    return ChargingStationConstants.ProvinceTooLong;
+                case StationValidationError.ContactPhoneTooLong:
+                    return ChargingStationConstants.ContactPhoneTooLong;
+                case StationValidationError.ContactEmailTooLong:
+                    return ChargingStationConstants.ContactEmailTooLong;
+                case StationValidationError.InvalidContactEmail:
+                    return ChargingStationConstants.InvalidContactEmail;
                 default:
                     return "Validation error";
             }

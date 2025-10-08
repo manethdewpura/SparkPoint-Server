@@ -40,7 +40,7 @@ namespace SparkPoint_Server.Helpers
 
         private static FilterDefinition<ChargingStation> BuildSearchFilter(string searchTerm)
         {
-            // Search in station name and type
+            // Search in station name, type, address, city, and province
             var nameFilter = Builders<ChargingStation>.Filter.Regex(
                 s => s.Name, 
                 new MongoDB.Bson.BsonRegularExpression(searchTerm, "i")
@@ -51,7 +51,22 @@ namespace SparkPoint_Server.Helpers
                 new MongoDB.Bson.BsonRegularExpression(searchTerm, "i")
             );
 
-            return Builders<ChargingStation>.Filter.Or(nameFilter, typeFilter);
+            var addressFilter = Builders<ChargingStation>.Filter.Regex(
+                s => s.Address, 
+                new MongoDB.Bson.BsonRegularExpression(searchTerm, "i")
+            );
+
+            var cityFilter = Builders<ChargingStation>.Filter.Regex(
+                s => s.City, 
+                new MongoDB.Bson.BsonRegularExpression(searchTerm, "i")
+            );
+
+            var provinceFilter = Builders<ChargingStation>.Filter.Regex(
+                s => s.Province, 
+                new MongoDB.Bson.BsonRegularExpression(searchTerm, "i")
+            );
+
+            return Builders<ChargingStation>.Filter.Or(nameFilter, typeFilter, addressFilter, cityFilter, provinceFilter);
         }
 
         private static FilterDefinition<ChargingStation> BuildLocationFilter(LocationCoordinates center, double maxDistanceKm)
@@ -133,9 +148,7 @@ namespace SparkPoint_Server.Helpers
         {
             return Builders<Booking>.Filter.And(
                 Builders<Booking>.Filter.Eq(b => b.StationId, stationId),
-                Builders<Booking>.Filter.Not(
-                    Builders<Booking>.Filter.In(b => b.Status, BookingStatusConstants.SlotFreeingStatuses)
-                )
+                Builders<Booking>.Filter.In(b => b.Status, BookingStatusConstants.SlotReservingStatuses)
             );
         }
 
@@ -164,6 +177,36 @@ namespace SparkPoint_Server.Helpers
             {
                 var sanitizedLocation = Utils.ChargingStationUtils.SanitizeLocation(model.Location);
                 updateBuilder = updateBuilder.Set(s => s.Location, sanitizedLocation);
+            }
+
+            if (!string.IsNullOrEmpty(model.Address))
+            {
+                var sanitizedAddress = Utils.ChargingStationUtils.SanitizeAddress(model.Address);
+                updateBuilder = updateBuilder.Set(s => s.Address, sanitizedAddress);
+            }
+
+            if (!string.IsNullOrEmpty(model.City))
+            {
+                var sanitizedCity = Utils.ChargingStationUtils.SanitizeCity(model.City);
+                updateBuilder = updateBuilder.Set(s => s.City, sanitizedCity);
+            }
+
+            if (!string.IsNullOrEmpty(model.Province))
+            {
+                var sanitizedProvince = Utils.ChargingStationUtils.SanitizeProvince(model.Province);
+                updateBuilder = updateBuilder.Set(s => s.Province, sanitizedProvince);
+            }
+
+            if (!string.IsNullOrEmpty(model.ContactPhone))
+            {
+                var sanitizedContactPhone = Utils.ChargingStationUtils.SanitizeContactPhone(model.ContactPhone);
+                updateBuilder = updateBuilder.Set(s => s.ContactPhone, sanitizedContactPhone);
+            }
+
+            if (!string.IsNullOrEmpty(model.ContactEmail))
+            {
+                var sanitizedContactEmail = Utils.ChargingStationUtils.SanitizeContactEmail(model.ContactEmail);
+                updateBuilder = updateBuilder.Set(s => s.ContactEmail, sanitizedContactEmail);
             }
 
             if (!string.IsNullOrEmpty(model.Type))

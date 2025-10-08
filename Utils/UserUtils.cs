@@ -321,5 +321,59 @@ namespace SparkPoint_Server.Utils
                 user.UpdatedAt
             };
         }
+        public static object CreateStationUserProfileWithStation(User user, ChargingStation station)
+        {
+            var userProfile = new
+            {
+                user.Id,
+                user.Username,
+                user.Email,
+                user.FirstName,
+                user.LastName,
+                user.RoleId,
+                RoleName = AuthUtils.GetRoleName(user.RoleId),
+                user.ChargingStationId,
+                user.IsActive,
+                user.CreatedAt,
+                user.UpdatedAt
+            };
+
+            if (station != null)
+            {
+                return new
+                {
+                    userProfile.Id,
+                    userProfile.Username,
+                    userProfile.Email,
+                    userProfile.FirstName,
+                    userProfile.LastName,
+                    userProfile.RoleId,
+                    userProfile.RoleName,
+                    userProfile.ChargingStationId,
+                    userProfile.IsActive,
+                    userProfile.CreatedAt,
+                    userProfile.UpdatedAt,
+                    ChargingStation = new
+                    {
+                        station.Id,
+                        station.Name,
+                        station.Location,
+                        station.Address,
+                        station.City,
+                        station.Province,
+                        station.ContactPhone,
+                        station.ContactEmail,
+                        station.Type,
+                        station.TotalSlots,
+                        station.AvailableSlots,
+                        station.IsActive,
+                        station.CreatedAt,
+                        station.UpdatedAt
+                    }
+                };
+            }
+
+            return userProfile;
+        }
     }
 }
