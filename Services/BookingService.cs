@@ -454,6 +454,11 @@ namespace SparkPoint_Server.Services
                         Id = station.Id,
                         Name = station.Name,
                         Location = station.Location,
+                        Address = station.Address,
+                        City = station.City,
+                        Province = station.Province,
+                        ContactPhone = station.ContactPhone,
+                        ContactEmail = station.ContactEmail,
                         Type = station.Type
                     };
                 }
@@ -490,6 +495,11 @@ namespace SparkPoint_Server.Services
                     Id = station.Id,
                     Name = station.Name,
                     Location = station.Location,
+                    Address = station.Address,
+                    City = station.City,
+                    Province = station.Province,
+                    ContactPhone = station.ContactPhone,
+                    ContactEmail = station.ContactEmail,
                     Type = station.Type
                 };
             }
