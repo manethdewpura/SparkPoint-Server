@@ -43,29 +43,10 @@ namespace SparkPoint_Server.Controllers
             if (string.IsNullOrEmpty(currentUserId))
                 return Unauthorized();
 
-            var result = _evOwnerService.UpdateProfile(currentUserId, model);
-            
-            if (!result.IsSuccess)
-            {
-                return GetErrorResponse(result.Status, result.Message);
-            }
-
-            return Ok(result.Message);
-        }
-
-        [HttpPatch]
-        [Route("update/{nic}")]
-        [AdminAndStationUser]
-        [OwnAccountMiddleware("nic")]
-        public IHttpActionResult UpdateProfileByNic(string nic, EVOwnerUpdateModel model)
-        {
-            if (string.IsNullOrEmpty(nic))
-                return BadRequest("NIC is required.");
-
             if (model == null)
                 return BadRequest("Update data is required.");
 
-            var result = _evOwnerService.UpdateProfileByNIC(nic, model);
+            var result = _evOwnerService.UpdateProfile(currentUserId, model);
             
             if (!result.IsSuccess)
             {

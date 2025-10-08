@@ -254,7 +254,7 @@ namespace SparkPoint_Server.Utils
             if (string.IsNullOrWhiteSpace(nic))
                 return false;
 
-            var nicRegex = new Regex(@"^[0-9]{9}[vVxX]$|^[0-9]{12}$");
+            var nicRegex = new Regex(@"^[0-9]{9}[vV]$|^[0-9]{12}$");
             return nicRegex.IsMatch(nic.Trim());
         }
 
