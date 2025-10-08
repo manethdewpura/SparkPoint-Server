@@ -49,7 +49,9 @@ namespace SparkPoint_Server.Constants
        
         public static DateTime GetSlotEndTime(DateTime slotStartTime)
         {
-            return slotStartTime.AddHours(SlotDurationHours);
+            var endTime = slotStartTime.AddHours(SlotDurationHours);
+            // Ensure the result maintains the same DateTimeKind as the input
+            return slotStartTime.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(endTime, DateTimeKind.Utc) : endTime;
         }
 
         public static string GetSlotDisplayName(DateTime slotStartTime)
@@ -62,8 +64,9 @@ namespace SparkPoint_Server.Constants
 
         public static List<DateTime> GetAvailableTimeSlotsForDate(DateTime date)
         {
-            var dateOnly = date.Date;
-            return PredefinedTimeSlots.Select(timeSlot => dateOnly.Add(timeSlot)).ToList();
+            // Ensure we work with UTC dates to match booking storage format
+            var dateOnly = date.Kind == DateTimeKind.Utc ? date.Date : DateTime.SpecifyKind(date.Date, DateTimeKind.Utc);
+            return PredefinedTimeSlots.Select(timeSlot => DateTime.SpecifyKind(dateOnly.Add(timeSlot), DateTimeKind.Utc)).ToList();
         }
 
         public static bool IsWithinOperatingHours(DateTime slotStartTime)

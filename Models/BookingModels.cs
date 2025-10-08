@@ -19,6 +19,7 @@ namespace SparkPoint_Server.Models
         public string StationId { get; set; }
 
         [BsonElement("reservationTime")]
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
         public DateTime ReservationTime { get; set; }
 
         [BsonElement("slotsRequested")]
