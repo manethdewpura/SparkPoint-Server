@@ -1,4 +1,13 @@
-﻿using System;
+﻿/*
+ * MongoDbContext.cs
+ * 
+ * This helper class provides MongoDB database context and connection management.
+ * It handles MongoDB client creation with optimal connection pool settings,
+ * database selection, and collection access for data persistence operations.
+ * 
+ */
+
+using System;
 using System.Configuration;
 using MongoDB.Driver;
 
@@ -11,12 +20,14 @@ namespace SparkPoint_Server.Helpers
         private static readonly Lazy<MongoClient> _lazyClient = new Lazy<MongoClient>(CreateMongoClient);
         private static MongoClient Client => _lazyClient.Value;
 
+        // Constructor: Initializes MongoDB database connection
         public MongoDbContext()
         {
             var databaseName = GetDatabaseName();
             _database = Client.GetDatabase(databaseName);
         }
 
+        // Creates MongoDB client with optimal connection settings
         private static MongoClient CreateMongoClient()
         {
             var connectionString = GetConnectionString();
@@ -39,9 +50,10 @@ namespace SparkPoint_Server.Helpers
             return new MongoClient(settings);
         }
 
+        // Gets MongoDB connection string from environment or config
         private static string GetConnectionString()
         {
-            // Try environment variable first (for production)
+            // Try environment variable first
             var connectionString = Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING");
             
             if (string.IsNullOrEmpty(connectionString))
@@ -58,9 +70,10 @@ namespace SparkPoint_Server.Helpers
             return connectionString;
         }
 
+        // Gets database name from environment or config
         private static string GetDatabaseName()
         {
-            // Try environment variable first (for production)
+            // Try environment variable first
             var databaseName = Environment.GetEnvironmentVariable("MONGODB_DATABASE_NAME");
             
             if (string.IsNullOrEmpty(databaseName))
@@ -77,16 +90,19 @@ namespace SparkPoint_Server.Helpers
 
             return databaseName;
         }
+        // Gets MongoDB collection by name
         public IMongoCollection<T> GetCollection<T>(string name)
         {
             return _database.GetCollection<T>(name);
         }
 
+        // Gets MongoDB database instance
         public IMongoDatabase GetDatabase()
         {
             return _database;
         }
 
+        // Tests database connectivity with ping command
         public bool TestConnection()
         {
             try

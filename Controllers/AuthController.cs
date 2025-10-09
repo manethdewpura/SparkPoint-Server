@@ -1,3 +1,12 @@
+/*
+ * AuthController.cs
+ * 
+ * This controller handles all authentication-related HTTP requests including login, logout,
+ * token refresh, and session management. It supports both web clients (using cookies) and
+ * mobile/API clients (using tokens in request body). All operations are secured and include
+ * proper token management with refresh token rotation.
+ */
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,11 +28,13 @@ namespace SparkPoint_Server.Controllers
     {
         private readonly AuthService _authService;
 
+        // Constructor: Initializes the AuthService dependency
         public AuthController()
         {
             _authService = new AuthService();
         }
 
+        // Handles user login with support for both web and mobile clients
         [HttpPost]
         [Route("login")]
         public IHttpActionResult Login(LoginModel model)
@@ -62,6 +73,7 @@ namespace SparkPoint_Server.Controllers
             }
         }
 
+        // Handles token refresh for both web and mobile clients
         [HttpPost]
         [Route("refresh")]
         public IHttpActionResult Refresh(RefreshModel model)
@@ -123,6 +135,7 @@ namespace SparkPoint_Server.Controllers
             }
         }
 
+        // Handles user logout and token revocation
         [HttpPost]
         [Route("logout")]
         public IHttpActionResult Logout(RefreshModel model)
@@ -157,6 +170,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(new { message = "Logged out successfully" });
         }
 
+        // Retrieves active sessions for a specific user
         [HttpGet]
         [Route("sessions/{userId}")]
         public IHttpActionResult GetActiveSessions(string userId)
@@ -171,6 +185,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(new { sessions = sessions });
         }
 
+        // Revokes a specific session for a user
         [HttpDelete]
         [Route("sessions/{userId}/{tokenId}")]
         public IHttpActionResult RevokeSession(string userId, string tokenId)
@@ -185,6 +200,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(new { message = "Session revoked successfully" });
         }
 
+        // Creates refresh token context with client information
         private RefreshTokenContext CreateRefreshTokenContext()
         {
             return new RefreshTokenContext
@@ -195,6 +211,7 @@ namespace SparkPoint_Server.Controllers
             };
         }
 
+        // Extracts client IP address from request headers
         private string GetClientIpAddress()
         {
             if (Request.Properties.ContainsKey("MS_HttpContext"))
@@ -225,6 +242,7 @@ namespace SparkPoint_Server.Controllers
             return "Unknown";
         }
 
+        // Converts authentication status to appropriate HTTP response
         private IHttpActionResult GetErrorResponse(AuthenticationStatus status, string errorMessage)
         {
             switch (status)
@@ -241,6 +259,7 @@ namespace SparkPoint_Server.Controllers
             }
         }
 
+        // Converts token refresh status to appropriate HTTP response
         private IHttpActionResult GetErrorResponse(TokenRefreshStatus status, string errorMessage)
         {
             switch (status)
@@ -259,6 +278,7 @@ namespace SparkPoint_Server.Controllers
             }
         }
 
+        // Determines if the request is from a web client based on user agent and origin
         private bool IsWebClient()
         {
             var userAgent = Request.Headers.UserAgent?.ToString() ?? "";
@@ -298,6 +318,7 @@ namespace SparkPoint_Server.Controllers
             }
         }
 
+        // Sets refresh token cookie for web clients
         private void SetRefreshTokenCookie(string refreshToken)
         {
             if (HttpContext.Current?.Response != null)
@@ -320,6 +341,7 @@ namespace SparkPoint_Server.Controllers
             }
         }
 
+        // Sets access token cookie for web clients
         private void SetAccessTokenCookie(string accessToken)
         {
             if (HttpContext.Current?.Response != null)
@@ -345,6 +367,7 @@ namespace SparkPoint_Server.Controllers
             }
         }
 
+        // Retrieves refresh token from cookie
         private string GetRefreshTokenFromCookie()
         {
             if (HttpContext.Current?.Request?.Cookies != null)
@@ -355,6 +378,7 @@ namespace SparkPoint_Server.Controllers
             return null;
         }
 
+        // Retrieves access token from cookie
         private string GetAccessTokenFromCookie()
         {
             if (HttpContext.Current?.Request?.Cookies != null)
@@ -365,6 +389,7 @@ namespace SparkPoint_Server.Controllers
             return null;
         }
 
+        // Clears refresh token cookie
         private void ClearRefreshTokenCookie()
         {
             if (HttpContext.Current?.Response != null)
@@ -389,6 +414,7 @@ namespace SparkPoint_Server.Controllers
             }
         }
 
+        // Clears access token cookie
         private void ClearAccessTokenCookie()
         {
             if (HttpContext.Current?.Response != null)
@@ -413,6 +439,7 @@ namespace SparkPoint_Server.Controllers
             }
         }
 
+        // Determines if the request is secure (HTTPS)
         private bool IsSecureRequest()
         {
             try

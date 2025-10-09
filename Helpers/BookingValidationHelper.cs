@@ -1,3 +1,12 @@
+/*
+ * BookingValidationHelper.cs
+ * 
+ * This helper class provides booking validation functionality.
+ * It validates booking creation, updates, cancellations, and status changes
+ * with proper business rules and time constraints.
+ * 
+ */
+
 using System;
 using SparkPoint_Server.Models;
 using SparkPoint_Server.Constants;
@@ -7,6 +16,7 @@ namespace SparkPoint_Server.Helpers
     public static class BookingValidationHelper
     {
 
+        // Validates booking creation model data
         public static ValidationResult ValidateCreateBooking(BookingCreateModel model)
         {
             if (model == null)
@@ -33,6 +43,7 @@ namespace SparkPoint_Server.Helpers
             return ValidationResult.Success();
         }
 
+        // Validates booking update model data
         public static ValidationResult ValidateUpdateBooking(BookingUpdateModel model, Booking currentBooking)
         {
             if (model == null)
@@ -72,6 +83,7 @@ namespace SparkPoint_Server.Helpers
             return ValidationResult.Success();
         }
 
+        // Validates reservation time constraints
         public static ValidationResult ValidateReservationTime(DateTime reservationTime)
         {
             var daysFromNow = (reservationTime.Date - DateTime.Now.Date).Days;
@@ -85,6 +97,7 @@ namespace SparkPoint_Server.Helpers
             return ValidationResult.Success();
         }
 
+        // Validates time slot availability and operating hours
         public static ValidationResult ValidateTimeSlot(DateTime reservationTime)
         {
             if (!TimeSlotConstants.IsValidTimeSlot(reservationTime))
@@ -96,6 +109,7 @@ namespace SparkPoint_Server.Helpers
             return ValidationResult.Success();
         }
 
+        // Validates number of slots requested
         public static ValidationResult ValidateSlotsRequested(int slotsRequested)
         {
             if (slotsRequested <= 0)
@@ -107,6 +121,7 @@ namespace SparkPoint_Server.Helpers
             return ValidationResult.Success();
         }
 
+        // Validates booking cancellation constraints
         public static ValidationResult ValidateCancelBooking(Booking booking)
         {
             if (booking == null)
@@ -125,6 +140,7 @@ namespace SparkPoint_Server.Helpers
             return ValidationResult.Success();
         }
 
+        // Validates booking status update constraints
         public static ValidationResult ValidateStatusUpdate(BookingStatusUpdateModel model, Booking currentBooking)
         {
             if (model == null || string.IsNullOrEmpty(model.Status))

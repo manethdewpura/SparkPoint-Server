@@ -1,4 +1,13 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
+﻿/*
+ * RoleModels.cs
+ * 
+ * This file contains role-related data models used throughout the system.
+ * It includes the Role entity class for role management operations
+ * with proper MongoDB serialization attributes.
+ * 
+ */
+
+using MongoDB.Bson.Serialization.Attributes;
 using System;
 
 namespace SparkPoint_Server.Models

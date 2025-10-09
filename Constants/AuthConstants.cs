@@ -1,3 +1,12 @@
+/*
+ * AuthConstants.cs
+ * 
+ * This file contains authentication-related constants used throughout the system.
+ * It includes JWT configuration, token expiry settings, error messages,
+ * and collection names for authentication operations.
+
+ */
+
 using System;
 
 namespace SparkPoint_Server.Constants

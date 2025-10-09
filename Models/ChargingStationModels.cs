@@ -1,4 +1,13 @@
-﻿using MongoDB.Bson;
+﻿/*
+ * ChargingStationModels.cs
+ * 
+ * This file contains all data models related to charging station operations.
+ * It includes the ChargingStation entity class and various request/response models
+ * for station operations such as creation, updates, filtering, and management.
+ * 
+ */
+
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using SparkPoint_Server.Constants;
 using SparkPoint_Server.Enums;
@@ -84,15 +93,19 @@ namespace SparkPoint_Server.Models
         [Required(ErrorMessage = "Location coordinates are required")]
         public LocationCoordinates Location { get; set; }
 
+        [Required(ErrorMessage = "Address is required")]
         [StringLength(200, ErrorMessage = "Address cannot exceed 200 characters")]
         public string Address { get; set; }
 
+        [Required(ErrorMessage = "City is required")]
         [StringLength(100, ErrorMessage = "City cannot exceed 100 characters")]
         public string City { get; set; }
 
+        [Required(ErrorMessage = "Province is required")]
         [StringLength(100, ErrorMessage = "Province cannot exceed 100 characters")]
         public string Province { get; set; }
 
+        [Required(ErrorMessage = "Contact phone is required")]
         [StringLength(15, ErrorMessage = "Contact phone cannot exceed 15 characters")]
         public string ContactPhone { get; set; }
 
@@ -147,6 +160,13 @@ namespace SparkPoint_Server.Models
 
         public LocationCoordinates NearLocation { get; set; }
         public double? MaxDistanceKm { get; set; }
+    }
+
+    public class StationSlotsUpdateModel
+    {
+        [Required(ErrorMessage = "Total slots is required")]
+        [Range(1, 100, ErrorMessage = "Total slots must be between 1 and 100")]
+        public int TotalSlots { get; set; }
     }
 
     public class StationQueryModel : StationFilterModel

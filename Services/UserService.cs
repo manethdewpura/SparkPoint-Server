@@ -1,3 +1,13 @@
+/*
+ * UserService.cs
+ * 
+ * This service handles all business logic related to user management operations.
+ * It manages user registration, profile updates, user listing, and account
+ * activation/deactivation with proper validation and authorization checks.
+ * All operations interact with MongoDB collections for data persistence.
+ * 
+ */
+
 using System;
 using System.Linq;
 using System.Collections.Generic;
@@ -15,6 +25,7 @@ namespace SparkPoint_Server.Services
         private readonly IMongoCollection<User> _usersCollection;
         private readonly IMongoCollection<ChargingStation> _stationsCollection;
 
+        // Constructor: Initializes MongoDB collections
         public UserService()
         {
             var dbContext = new MongoDbContext();
@@ -22,6 +33,7 @@ namespace SparkPoint_Server.Services
             _stationsCollection = dbContext.GetCollection<ChargingStation>(ChargingStationConstants.ChargingStationsCollection);
         }
 
+        // Registers a new admin user
         public UserOperationResult RegisterAdmin(RegisterModel model)
         {
             var validationResult = UserUtils.ValidateRegisterModel(model);
@@ -63,6 +75,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Updates user profile
         public UserOperationResult UpdateProfile(string userId, UserUpdateModel model)
         {
             var validationResult = UserUtils.ValidateUserUpdateModel(model);
@@ -111,6 +124,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Gets user profile by user ID
         public UserRetrievalResult GetProfile(string userId)
         {
             try
@@ -130,6 +144,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Creates a new station user
         public UserOperationResult CreateStationUser(CreateStationUserModel model)
         {
             var validationResult = UserUtils.ValidateCreateStationUserModel(model);
@@ -183,6 +198,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Gets station user profile by user ID
         public UserRetrievalResult GetStationUserProfile(string userId)
         {
             try
@@ -214,6 +230,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Updates station user profile
         public UserOperationResult UpdateStationUser(string userId, UserUpdateModel model)
         {
             var validationResult = UserUtils.ValidateUserUpdateModel(model);
@@ -262,6 +279,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Checks if user account is active
         public bool IsUserActive(string userId)
         {
             try
@@ -275,6 +293,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Checks if user has specific role
         public bool CheckUserRole(string userId, int expectedRoleId)
         {
             try
@@ -288,6 +307,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Gets all station users with optional filtering
         public UserRetrievalResult GetAllStationUsers(UserListFilterModel filter = null)
         {
             try

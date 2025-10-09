@@ -1,4 +1,12 @@
-﻿using System;
+﻿/*
+ * BookingsController.cs
+ * 
+ * This controller handles all HTTP requests related to booking operations.
+ * It provides endpoints for creating, retrieving, updating, and managing charging station
+ * bookings. All operations are secured with appropriate role-based authorization.
+ */
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -20,11 +28,13 @@ namespace SparkPoint_Server.Controllers
     {
         private readonly BookingService _bookingService;
 
+        // Constructor: Initializes the BookingService dependency
         public BookingsController()
         {
             _bookingService = new BookingService();
         }
 
+        // Creates a new booking for charging station
         [HttpPost]
         [Route("")]
         [AdminAndEVOwner]
@@ -46,6 +56,7 @@ namespace SparkPoint_Server.Controllers
             });
         }
 
+        // Retrieves bookings with optional filtering
         [HttpGet]
         [Route("")]
         [AllRoles]
@@ -63,6 +74,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Bookings);
         }
 
+        // Retrieves a specific booking by ID
         [HttpGet]
         [Route("{bookingId}")]
         [AllRoles]
@@ -80,6 +92,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Booking);
         }
 
+        // Updates an existing booking
         [HttpPatch]
         [Route("{bookingId}")]
         [AdminAndEVOwner]
@@ -97,6 +110,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
+        // Cancels an existing booking
         [HttpPatch]
         [Route("cancel/{bookingId}")]
         [AdminAndEVOwner]
@@ -114,6 +128,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
+        // Updates booking status (admin and station users only)
         [HttpPatch]
         [Route("status/{bookingId}")]
         [AdminAndStationUser]
@@ -131,6 +146,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
+        // Gets station availability for a specific date
         [HttpGet]
         [Route("availability/{stationId}/date/{date}")]
         [AllRoles]

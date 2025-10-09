@@ -1,3 +1,13 @@
+/*
+ * BookingService.cs
+ * 
+ * This service handles all business logic related to booking operations.
+ * It manages booking creation, retrieval, updates, and cancellation with proper
+ * authorization checks and time slot validation. All operations interact with
+ * MongoDB collections for data persistence.
+ * 
+ */
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,6 +27,7 @@ namespace SparkPoint_Server.Services
         private readonly IMongoCollection<EVOwner> _evOwnersCollection;
         private readonly BookingAuthorizationHelper _authorizationHelper;
 
+        // Constructor: Initializes MongoDB collections and authorization helper
         public BookingService()
         {
             var dbContext = new MongoDbContext();
@@ -27,38 +38,32 @@ namespace SparkPoint_Server.Services
             _authorizationHelper = new BookingAuthorizationHelper();
         }
 
+        // Creates a new booking with validation and authorization
         public BookingOperationResult CreateBooking(BookingCreateModel model, UserContext userContext)
         {
-            // Validate request
             var validationResult = BookingValidationHelper.ValidateCreateBooking(model);
             if (!validationResult.IsValid)
                 return BookingOperationResult.Failed(validationResult.ErrorMessage);
 
-            // Check authorization
             var authResult = _authorizationHelper.CanCreateBooking(userContext);
             if (!authResult.IsAuthorized)
                 return BookingOperationResult.Failed(authResult.ErrorMessage);
 
-            // Resolve owner NIC
             var ownerResult = _authorizationHelper.ResolveOwnerNIC(userContext, model.OwnerNIC);
             if (!ownerResult.IsSuccess)
                 return BookingOperationResult.Failed(ownerResult.ErrorMessage);
 
-            // Validate owner exists
             var evOwner = _evOwnersCollection.Find(ev => ev.NIC == ownerResult.OwnerNIC).FirstOrDefault();
             if (evOwner == null)
                 return BookingOperationResult.Failed("EV Owner not found.");
 
-            // Validate station
             var stationResult = ValidateStation(model.StationId);
             if (!stationResult.IsValid)
                 return BookingOperationResult.Failed(stationResult.ErrorMessage);
 
-            // Check slot availability for the requested number of slots
             if (!CheckSlotAvailability(model.StationId, model.ReservationTime, model.SlotsRequested))
                 return BookingOperationResult.Failed($"Only {GetAvailableSlotsAtTime(model.StationId, model.ReservationTime)} slots available for the requested time slot.");
 
-            // Create booking
             var booking = new Booking
             {
                 OwnerNIC = ownerResult.OwnerNIC,
@@ -86,6 +91,7 @@ namespace SparkPoint_Server.Services
             );
         }
 
+        // Retrieves bookings with filtering based on user role
         public BookingsQueryResult GetBookings(BookingFilterModel filter, UserContext userContext)
         {
             // Get role-based filter
@@ -133,6 +139,7 @@ namespace SparkPoint_Server.Services
             return BookingsQueryResult.Success(enrichedBookings);
         }
 
+        // Retrieves a specific booking by ID with authorization
         public BookingRetrievalResult GetBooking(string bookingId, UserContext userContext)
         {
             var booking = _bookingsCollection.Find(b => b.Id == bookingId).FirstOrDefault();
@@ -149,6 +156,7 @@ namespace SparkPoint_Server.Services
             return BookingRetrievalResult.Success(enrichedBooking);
         }
 
+        // Updates an existing booking with validation
         public BookingOperationResult UpdateBooking(string bookingId, BookingUpdateModel model, UserContext userContext)
         {
             var booking = _bookingsCollection.Find(b => b.Id == bookingId).FirstOrDefault();
@@ -207,6 +215,7 @@ namespace SparkPoint_Server.Services
             return BookingOperationResult.Success("Booking updated successfully.");
         }
 
+        // Cancels a booking with proper slot management
         public BookingOperationResult CancelBooking(string bookingId, UserContext userContext)
         {
             var booking = _bookingsCollection.Find(b => b.Id == bookingId).FirstOrDefault();
@@ -232,6 +241,7 @@ namespace SparkPoint_Server.Services
             return BookingOperationResult.Success(result.Message);
         }
 
+        // Updates booking status with slot management
         public BookingOperationResult UpdateBookingStatus(string bookingId, BookingStatusUpdateModel model, UserContext userContext)
         {
             var booking = _bookingsCollection.Find(b => b.Id == bookingId).FirstOrDefault();
@@ -257,6 +267,7 @@ namespace SparkPoint_Server.Services
             return BookingOperationResult.Success(result.Message);
         }
 
+        // Checks slot availability and returns detailed result
         public SlotAvailabilityResult CheckSlotAvailabilityForResult(string stationId, DateTime reservationTime)
         {
             var station = _stationsCollection.Find(s => s.Id == stationId).FirstOrDefault();
@@ -276,6 +287,7 @@ namespace SparkPoint_Server.Services
             });
         }
 
+        // Updates booking status with automatic slot management
         public BookingStatusUpdateResult UpdateBookingStatusWithSlotManagement(string bookingId, string newStatus, string oldStatus)
         {
             var booking = _bookingsCollection.Find(b => b.Id == bookingId).FirstOrDefault();
@@ -318,6 +330,7 @@ namespace SparkPoint_Server.Services
             return BookingStatusUpdateResult.Success($"Booking status updated to {newStatus}. {slotMessage}");
         }
 
+        // Calculates slot change based on status transitions
         private int CalculateSlotChange(string oldStatus, string newStatus, int slotsRequested)
         {
             var oldReservesSlot = BookingStatusConstants.IsSlotReservingStatus(oldStatus);
@@ -344,6 +357,7 @@ namespace SparkPoint_Server.Services
             return 0; // No change in slot allocation
         }
 
+        // Checks if slots are available for booking
         public bool CheckSlotAvailability(string stationId, DateTime reservationTime, int slotsRequested = 1, string excludeBookingId = null)
         {
             var station = _stationsCollection.Find(s => s.Id == stationId).FirstOrDefault();
@@ -354,6 +368,7 @@ namespace SparkPoint_Server.Services
             return availableSlots >= slotsRequested;
         }
 
+        // Gets number of available slots at specific time
         public int GetAvailableSlotsAtTime(string stationId, DateTime reservationTime, string excludeBookingId = null)
         {
             var station = _stationsCollection.Find(s => s.Id == stationId).FirstOrDefault();
@@ -384,6 +399,7 @@ namespace SparkPoint_Server.Services
             return station.TotalSlots - bookedSlots;
         }
 
+        // Recalculates station available slots based on active bookings
         public BookingStatusUpdateResult RecalculateStationAvailableSlots(string stationId)
         {
             var station = _stationsCollection.Find(s => s.Id == stationId).FirstOrDefault();
@@ -408,6 +424,7 @@ namespace SparkPoint_Server.Services
             return BookingStatusUpdateResult.Success($"Station available slots recalculated. Available: {calculatedAvailableSlots}/{station.TotalSlots}");
         }
 
+        // Validates station exists and is active
         private StationValidationResult ValidateStation(string stationId)
         {
             var station = _stationsCollection.Find(s => s.Id == stationId && s.IsActive).FirstOrDefault();
@@ -417,6 +434,7 @@ namespace SparkPoint_Server.Services
             return StationValidationResult.Success();
         }
 
+        // Enriches bookings with station information
         private List<BookingWithStationInfo> EnrichBookingsWithStationInfo(List<Booking> bookings)
         {
             if (bookings == null || !bookings.Any())
@@ -467,6 +485,7 @@ namespace SparkPoint_Server.Services
             }).ToList();
         }
 
+        // Enriches single booking with station information
         private BookingWithStationInfo EnrichBookingWithStationInfo(Booking booking)
         {
             if (booking == null)
@@ -507,6 +526,7 @@ namespace SparkPoint_Server.Services
             return enrichedBooking;
         }
 
+        // Gets nearby stations availability for a specific date
         public NearbyStationsAvailabilityResult GetNearbyStationsAvailability(DateTime date, double? latitude, double? longitude, double radiusKm)
         {
             try
@@ -576,6 +596,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Creates station availability info for time slots
         private object CreateStationAvailabilityInfo(ChargingStation station, List<DateTime> timeSlots)
         {
             var slotAvailability = timeSlots.Select(slot => new
@@ -598,6 +619,7 @@ namespace SparkPoint_Server.Services
             };
         }
 
+        // Calculates distance between two coordinates using Haversine formula
         private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
         {
             // Haversine formula to calculate distance between two coordinates
@@ -615,6 +637,7 @@ namespace SparkPoint_Server.Services
             return R * c;
         }
 
+        // Converts degrees to radians for distance calculation
         private double ToRadians(double degrees)
         {
             return degrees * (Math.PI / 180);

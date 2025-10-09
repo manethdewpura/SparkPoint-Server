@@ -1,3 +1,13 @@
+/*
+ * ChargingStationService.cs
+ * 
+ * This service handles all business logic related to charging station operations.
+ * It manages station creation, retrieval, updates, and management with proper
+ * validation and authorization checks. All operations interact with MongoDB
+ * collections for data persistence.
+ * 
+ */
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,6 +27,7 @@ namespace SparkPoint_Server.Services
         private readonly IMongoCollection<User> _usersCollection;
         private readonly IMongoCollection<Booking> _bookingsCollection;
 
+        // Constructor: Initializes MongoDB collections
         public ChargingStationService()
         {
             var dbContext = new MongoDbContext();
@@ -25,9 +36,9 @@ namespace SparkPoint_Server.Services
             _bookingsCollection = dbContext.GetCollection<Booking>(ChargingStationConstants.BookingsCollection);
         }
 
+        // Creates a new charging station with validation
         public StationOperationResult CreateStation(StationCreateModel model)
         {
-            // Validate the model
             var validationResult = ChargingStationUtils.ValidateCreateModel(model);
             if (!validationResult.IsValid)
             {
@@ -36,7 +47,6 @@ namespace SparkPoint_Server.Services
 
             try
             {
-                // Create the station
                 var station = new ChargingStation
                 {
                     Name = ChargingStationUtils.SanitizeName(model.Name),
@@ -67,6 +77,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Retrieves charging stations with optional filtering
         public StationQueryResult GetStations(StationFilterModel filter = null)
         {
             try
@@ -82,6 +93,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Retrieves a specific charging station by ID
         public StationRetrievalResult GetStation(string stationId)
         {
             try
@@ -105,6 +117,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Updates an existing charging station
         public StationOperationResult UpdateStation(string stationId, StationUpdateModel model)
         {
             // Validate the model
@@ -133,6 +146,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Activates a charging station
         public StationOperationResult ActivateStation(string stationId)
         {
             try
@@ -162,6 +176,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Deactivates a charging station with booking checks
         public StationOperationResult DeactivateStation(string stationId)
         {
             try
@@ -203,6 +218,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Gets stations with sorting
         public StationQueryResult GetStationsSorted(StationFilterModel filter, StationSortField sortField, SortOrder sortOrder)
         {
             try
@@ -223,6 +239,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Gets stations with pagination
         public StationQueryResult GetStationsPaginated(StationFilterModel filter, int pageNumber, int pageSize)
         {
             try
@@ -254,6 +271,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Checks if station exists and is active
         public bool IsStationActiveAndExists(string stationId)
         {
             try
@@ -267,6 +285,56 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Updates total slots for a charging station (station users for their own station)
+        public StationOperationResult UpdateStationSlots(string stationId, StationSlotsUpdateModel model, string currentUserId)
+        {
+            try
+            {
+                var station = _stationsCollection.Find(s => s.Id == stationId).FirstOrDefault();
+                if (station == null)
+                {
+                    return StationOperationResult.Failed(StationOperationStatus.StationNotFound);
+                }
+
+                // Verify that the current user is a station user for this specific station
+                var stationUser = _usersCollection.Find(u => u.Id == currentUserId && 
+                                                             u.RoleId == ApplicationConstants.StationUserRoleId && 
+                                                             u.ChargingStationId == stationId &&
+                                                             u.IsActive).FirstOrDefault();
+                if (stationUser == null)
+                {
+                    return StationOperationResult.Failed(StationOperationStatus.ValidationFailed, 
+                        "You are not authorized to update slots for this station");
+                }
+
+                // Validate that new total slots is not less than currently occupied slots
+                var occupiedSlots = station.TotalSlots - station.AvailableSlots;
+                if (model.TotalSlots < occupiedSlots)
+                {
+                    return StationOperationResult.Failed(StationOperationStatus.ValidationFailed, 
+                        $"Cannot reduce total slots below currently occupied slots ({occupiedSlots})");
+                }
+
+                // Calculate new available slots
+                var newAvailableSlots = model.TotalSlots - occupiedSlots;
+
+                var updateDefinition = Builders<ChargingStation>.Update
+                    .Set(s => s.TotalSlots, model.TotalSlots)
+                    .Set(s => s.AvailableSlots, newAvailableSlots)
+                    .Set(s => s.UpdatedAt, DateTime.UtcNow);
+
+                _stationsCollection.UpdateOne(s => s.Id == stationId, updateDefinition);
+
+                return StationOperationResult.Success(
+                    $"Station slots updated successfully. Total slots: {model.TotalSlots}, Available slots: {newAvailableSlots}");
+            }
+            catch (Exception ex)
+            {
+                return StationOperationResult.Failed(StationOperationStatus.Failed, ex.Message);
+            }
+        }
+
+        // Gets station statistics including utilization
         public object GetStationStatistics(string stationId)
         {
             try

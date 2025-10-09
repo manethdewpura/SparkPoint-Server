@@ -1,3 +1,12 @@
+/*
+ * UserModels.cs
+ * 
+ * This file contains all data models related to user management operations.
+ * It includes the User entity class and various request/response models
+ * for user operations such as registration, updates, filtering, and management.
+ * 
+ */
+
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using SparkPoint_Server.Constants;

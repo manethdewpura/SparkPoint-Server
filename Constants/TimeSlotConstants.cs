@@ -1,3 +1,11 @@
+/*
+ * TimeSlotConstants.cs
+ * 
+ * This file contains time slot-related constants and utility methods.
+ * It defines station operating hours, slot durations, predefined time slots,
+ * and provides helper methods for time slot validation and management.
+ */
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -41,12 +49,14 @@ namespace SparkPoint_Server.Constants
             { new TimeSpan(22, 0, 0), "10:00 PM - 12:00 AM" }
         };
 
+        // Validates if the given DateTime represents a valid predefined time slot
         public static bool IsValidTimeSlot(DateTime dateTime)
         {
             var timeOfDay = dateTime.TimeOfDay;
             return PredefinedTimeSlots.Contains(timeOfDay);
         }
        
+        // Calculates the end time for a given slot start time
         public static DateTime GetSlotEndTime(DateTime slotStartTime)
         {
             var endTime = slotStartTime.AddHours(SlotDurationHours);
@@ -54,6 +64,7 @@ namespace SparkPoint_Server.Constants
             return slotStartTime.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(endTime, DateTimeKind.Utc) : endTime;
         }
 
+        // Gets the display name for a given slot start time
         public static string GetSlotDisplayName(DateTime slotStartTime)
         {
             var timeOfDay = slotStartTime.TimeOfDay;
@@ -62,6 +73,7 @@ namespace SparkPoint_Server.Constants
                 : $"{slotStartTime:HH:mm} - {GetSlotEndTime(slotStartTime):HH:mm}";
         }
 
+        // Generates all available time slots for a specific date
         public static List<DateTime> GetAvailableTimeSlotsForDate(DateTime date)
         {
             // Ensure we work with UTC dates to match booking storage format
@@ -69,6 +81,7 @@ namespace SparkPoint_Server.Constants
             return PredefinedTimeSlots.Select(timeSlot => DateTime.SpecifyKind(dateOnly.Add(timeSlot), DateTimeKind.Utc)).ToList();
         }
 
+        // Checks if a slot start time is within station operating hours
         public static bool IsWithinOperatingHours(DateTime slotStartTime)
         {
             var timeOfDay = slotStartTime.TimeOfDay;

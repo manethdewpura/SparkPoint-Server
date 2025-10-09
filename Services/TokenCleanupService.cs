@@ -1,3 +1,12 @@
+/*
+ * TokenCleanupService.cs
+ * 
+ * This service provides background token cleanup functionality.
+ * It runs periodically to clean up expired and revoked tokens,
+ * ensuring database performance and security.
+ * 
+ */
+
 using System;
 using System.Threading.Tasks;
 using System.Web.Hosting;
@@ -11,11 +20,14 @@ namespace SparkPoint_Server.Services
         private bool _shuttingDown;
         private System.Threading.Timer _timer;
 
+        // Constructor: Registers the service with the hosting environment
         public TokenCleanupService()
         {
             HostingEnvironment.RegisterObject(this);
         }
 
+        // Starts the background token cleanup timer
+        // Starts the background token cleanup timer
         public void Start()
         {
             lock (_lock)
@@ -27,6 +39,8 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Stops the cleanup service and unregisters from hosting environment
+        // Stops the cleanup service and unregisters from hosting environment
         public void Stop(bool immediate)
         {
             lock (_lock)
@@ -37,6 +51,8 @@ namespace SparkPoint_Server.Services
             HostingEnvironment.UnregisterObject(this);
         }
 
+        // Performs the actual token cleanup work
+        // Performs the actual token cleanup work
         private void DoWork(object state)
         {
             lock (_lock)

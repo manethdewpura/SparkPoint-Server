@@ -1,3 +1,12 @@
+/*
+ * EVOwnerService.cs
+ * 
+ * This service handles all business logic related to EV Owner operations.
+ * It manages EV Owner registration, profile updates, account activation/deactivation,
+ * and data retrieval. All operations interact with MongoDB collections for data persistence.
+ * 
+ */
+
 using System;
 using System.Linq;
 using MongoDB.Driver;
@@ -14,6 +23,7 @@ namespace SparkPoint_Server.Services
         private readonly IMongoCollection<EVOwner> _evOwnersCollection;
         private readonly IMongoCollection<User> _usersCollection;
 
+        // Constructor: Initializes MongoDB collections for EV Owners and Users
         public EVOwnerService()
         {
             var dbContext = new MongoDbContext();
@@ -21,6 +31,7 @@ namespace SparkPoint_Server.Services
             _usersCollection = dbContext.GetCollection<User>(AuthConstants.UsersCollection);
         }
 
+        // Registers a new EV Owner by creating both User and EVOwner records
         public EVOwnerOperationResult Register(EVOwnerRegisterModel model)
         {
             var validationResult = UserUtils.ValidateEVOwnerRegisterModel(model);
@@ -85,6 +96,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Updates the profile of an EV Owner by user ID
         public EVOwnerOperationResult UpdateProfile(string userId, EVOwnerUpdateModel model)
         {
             var validationResult = UserUtils.ValidateEVOwnerUpdateModel(model);
@@ -145,6 +157,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Deactivates an EV Owner account by user ID
         public EVOwnerOperationResult DeactivateAccount(string userId)
         {
             try
@@ -171,6 +184,40 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Allows admin to deactivate any EV Owner account by NIC
+        public EVOwnerOperationResult AdminDeactivateAccount(string nic)
+        {
+            try
+            {
+                var evOwner = _evOwnersCollection.Find(o => o.NIC == nic).FirstOrDefault();
+                if (evOwner == null)
+                {
+                    return EVOwnerOperationResult.Failed(EVOwnerOperationStatus.EVOwnerNotFound);
+                }
+
+                var user = _usersCollection.Find(u => u.Id == evOwner.UserId).FirstOrDefault();
+                if (user == null)
+                {
+                    return EVOwnerOperationResult.Failed(EVOwnerOperationStatus.UserNotFound);
+                }
+
+                if (!user.IsActive)
+                {
+                    return EVOwnerOperationResult.Failed(EVOwnerOperationStatus.AccountAlreadyDeactivated);
+                }
+
+                var update = UserUpdateHelper.BuildActivationUpdate(false);
+                _usersCollection.UpdateOne(u => u.Id == evOwner.UserId, update);
+
+                return EVOwnerOperationResult.Success(EVOwnerConstants.AccountDeactivatedSuccessfully);
+            }
+            catch (Exception ex)
+            {
+                return EVOwnerOperationResult.Failed(EVOwnerOperationStatus.Failed, ex.Message);
+            }
+        }
+
+        // Reactivates a deactivated EV Owner account by NIC
         public EVOwnerOperationResult ReactivateAccount(string nic)
         {
             try
@@ -203,6 +250,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Retrieves EV Owner profile by user ID
         public UserRetrievalResult GetProfile(string userId)
         {
             try
@@ -224,6 +272,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Retrieves EV Owner profile by NIC
         public UserRetrievalResult GetProfileByNIC(string nic)
         {
             try
@@ -249,6 +298,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Checks if an EV Owner account is active by NIC
         public bool IsEVOwnerActive(string nic)
         {
             try
@@ -266,6 +316,8 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Retrieves EV Owner record by user ID
+        // Retrieves EV Owner record by user ID
         public EVOwner GetEVOwnerByUserId(string userId)
         {
             try
@@ -278,6 +330,8 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Retrieves EV Owner record by NIC
+        // Retrieves EV Owner record by NIC
         public EVOwner GetEVOwnerByNIC(string nic)
         {
             try
@@ -290,6 +344,8 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Updates EV Owner profile by NIC (internal method)
+        // Updates EV Owner profile by NIC (internal method)
         public EVOwnerOperationResult UpdateProfileByNIC(string nic, EVOwnerUpdateModel model)
         {
             var validationResult = UserUtils.ValidateEVOwnerUpdateModel(model);
@@ -312,7 +368,6 @@ namespace SparkPoint_Server.Services
                     return EVOwnerOperationResult.Failed(EVOwnerOperationStatus.UserNotFound);
                 }
 
-                // Check for email conflicts with other users (excluding current user)
                 if (!string.IsNullOrEmpty(model.Email) && model.Email != currentUser.Email)
                 {
                     if (_usersCollection.Find(u => u.Email == model.Email && u.Id != currentUser.Id).Any())
@@ -321,7 +376,6 @@ namespace SparkPoint_Server.Services
                     }
                 }
 
-                // Check for phone conflicts with other EV owners (excluding current EV owner)
                 if (!string.IsNullOrEmpty(model.Phone) && model.Phone != evOwner.Phone)
                 {
                     if (_evOwnersCollection.Find(o => o.Phone == model.Phone && o.NIC != nic).Any())
@@ -330,7 +384,6 @@ namespace SparkPoint_Server.Services
                     }
                 }
 
-                // Update User information
                 var userUpdateBuilder = UserUpdateHelper.BuildUserUpdate(new UserUpdateModel
                 {
                     FirstName = model.FirstName,
@@ -341,7 +394,6 @@ namespace SparkPoint_Server.Services
 
                 _usersCollection.UpdateOne(u => u.Id == evOwner.UserId, userUpdateBuilder);
 
-                // Update EVOwner information
                 var evOwnerUpdateBuilder = UserUpdateHelper.BuildEVOwnerUpdate(model);
                 _evOwnersCollection.UpdateOne(o => o.NIC == nic, evOwnerUpdateBuilder);
 
@@ -350,6 +402,131 @@ namespace SparkPoint_Server.Services
             catch (Exception ex)
             {
                 return EVOwnerOperationResult.Failed(EVOwnerOperationStatus.Failed, ex.Message);
+            }
+        }
+
+        // Updates EV Owner profile by NIC with admin privileges
+        // Updates EV Owner profile by NIC with admin privileges
+        public EVOwnerOperationResult AdminUpdateProfile(string nic, EVOwnerAdminUpdateModel model)
+        {
+            var validationResult = UserUtils.ValidateEVOwnerAdminUpdateModel(model);
+            if (!validationResult.IsValid)
+            {
+                return EVOwnerOperationResult.Failed(EVOwnerOperationStatus.ValidationFailed, validationResult.ErrorMessage);
+            }
+
+            try
+            {
+                var evOwner = _evOwnersCollection.Find(o => o.NIC == nic).FirstOrDefault();
+                if (evOwner == null)
+                {
+                    return EVOwnerOperationResult.Failed(EVOwnerOperationStatus.EVOwnerNotFound);
+                }
+
+                var currentUser = _usersCollection.Find(u => u.Id == evOwner.UserId).FirstOrDefault();
+                if (currentUser == null)
+                {
+                    return EVOwnerOperationResult.Failed(EVOwnerOperationStatus.UserNotFound);
+                }
+
+                if (!string.IsNullOrEmpty(model.Email) && model.Email != currentUser.Email)
+                {
+                    if (_usersCollection.Find(u => u.Email == model.Email && u.Id != currentUser.Id).Any())
+                    {
+                        return EVOwnerOperationResult.Failed(EVOwnerOperationStatus.EmailExists);
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(model.Phone) && model.Phone != evOwner.Phone)
+                {
+                    if (_evOwnersCollection.Find(o => o.Phone == model.Phone && o.NIC != nic).Any())
+                    {
+                        return EVOwnerOperationResult.Failed(EVOwnerOperationStatus.PhoneExists);
+                    }
+                }
+
+                var userUpdateBuilder = UserUpdateHelper.BuildUserUpdate(new UserUpdateModel
+                {
+                    FirstName = model.FirstName,
+                    LastName = model.LastName,
+                    Email = model.Email,
+                    Password = model.Password
+                });
+
+                _usersCollection.UpdateOne(u => u.Id == evOwner.UserId, userUpdateBuilder);
+
+                var evOwnerUpdateBuilder = UserUpdateHelper.BuildEVOwnerAdminUpdate(model);
+                _evOwnersCollection.UpdateOne(o => o.NIC == nic, evOwnerUpdateBuilder);
+
+                return EVOwnerOperationResult.Success(EVOwnerConstants.ProfileUpdatedSuccessfully);
+            }
+            catch (Exception ex)
+            {
+                return EVOwnerOperationResult.Failed(EVOwnerOperationStatus.Failed, ex.Message);
+            }
+        }
+
+        // Retrieves all EV Owners with optional filtering
+        public UserRetrievalResult GetAllEVOwners(EVOwnerListFilterModel filter = null)
+        {
+            try
+            {
+                // Get all EV owners
+                var allEVOwners = _evOwnersCollection.Find(_ => true).ToList();
+
+                // Get all users with EV Owner role
+                var evOwnerUserIds = allEVOwners.Select(o => o.UserId).ToList();
+                var userFilter = Builders<User>.Filter.In(u => u.Id, evOwnerUserIds);
+                
+                // Apply IsActive filter if provided
+                if (filter?.IsActive.HasValue == true)
+                {
+                    var activeFilter = Builders<User>.Filter.Eq(u => u.IsActive, filter.IsActive.Value);
+                    userFilter = Builders<User>.Filter.And(userFilter, activeFilter);
+                }
+
+                var users = _usersCollection.Find(userFilter).ToList();
+
+                // Build user profiles - create strongly typed objects for filtering
+                var evOwnerProfiles = users.Select(user =>
+                {
+                    var evOwner = allEVOwners.FirstOrDefault(o => o.UserId == user.Id);
+                    return new
+                    {
+                        Id = user.Id,
+                        Username = user.Username,
+                        Email = user.Email,
+                        FirstName = user.FirstName,
+                        LastName = user.LastName,
+                        RoleId = user.RoleId,
+                        RoleName = AuthUtils.GetRoleName(user.RoleId),
+                        IsActive = user.IsActive,
+                        NIC = evOwner?.NIC,
+                        Phone = evOwner?.Phone,
+                        CreatedAt = user.CreatedAt,
+                        UpdatedAt = user.UpdatedAt
+                    };
+                }).ToList();
+
+                // Apply search term filtering if provided
+                if (!string.IsNullOrEmpty(filter?.SearchTerm))
+                {
+                    var searchTerm = filter.SearchTerm.ToLower();
+                    evOwnerProfiles = evOwnerProfiles.Where(p =>
+                        (p.Username?.ToLower().Contains(searchTerm) ?? false) ||
+                        (p.Email?.ToLower().Contains(searchTerm) ?? false) ||
+                        (p.FirstName?.ToLower().Contains(searchTerm) ?? false) ||
+                        (p.LastName?.ToLower().Contains(searchTerm) ?? false) ||
+                        (p.NIC?.ToLower().Contains(searchTerm) ?? false) ||
+                        (p.Phone?.ToLower().Contains(searchTerm) ?? false)
+                    ).ToList();
+                }
+
+                return UserRetrievalResult.Success(evOwnerProfiles);
+            }
+            catch (Exception ex)
+            {
+                return UserRetrievalResult.Failed(ex.Message);
             }
         }
     }

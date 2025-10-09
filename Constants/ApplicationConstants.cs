@@ -1,3 +1,11 @@
+/*
+ * ApplicationConstants.cs
+ * 
+ * This file contains application-wide constants used throughout the system.
+ * It includes time constraints, booking limits, user role definitions,
+ * and default configuration values for the SparkPoint application.
+ */
+
 namespace SparkPoint_Server.Constants
 {
 

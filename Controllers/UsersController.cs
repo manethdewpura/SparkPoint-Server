@@ -1,4 +1,14 @@
-﻿using System;
+﻿/*
+ * UsersController.cs
+ * 
+ * This controller handles all HTTP requests related to user management operations.
+ * It provides endpoints for admin registration, user profile management, user listing,
+ * and account activation/deactivation. All operations are secured with appropriate
+ * role-based authorization.
+ * 
+ */
+
+using System;
 using System.Security.Claims;
 using System.Web.Http;
 using SparkPoint_Server.Models;
@@ -15,11 +25,13 @@ namespace SparkPoint_Server.Controllers
     {
         private readonly UserService _userService;
 
+        // Constructor: Initializes the UserService dependency
         public UsersController()
         {
             _userService = new UserService();
         }
 
+        // Registers a new admin user (admin only)
         [HttpPost]
         [Route("admin/register")]
         [AdminOnly]
@@ -47,6 +59,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(new { Message = result.Message, UserId = ((dynamic)result.Data)?.UserId });
         }
 
+        // Updates user profile (admin and station users only)
         [HttpPatch]
         [Route("profile")]
         [AdminAndStationUser]
@@ -75,6 +88,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
+        // Gets current user profile (admin and station users only)
         [HttpGet]
         [Route("profile")]
         [AdminAndStationUser]
@@ -104,6 +118,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.UserProfile);
         }
 
+        // Creates a new station user (admin only)
         [HttpPost]
         [Route("station-user")]
         [AdminOnly]
@@ -134,6 +149,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(new { Message = result.Message, UserId = ((dynamic)result.Data)?.UserId });
         }
 
+        // Gets station user profile by user ID (admin only)
         [HttpGet]
         [Route("station-user/{userId}")]
         [AdminOnly]
@@ -149,6 +165,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.UserProfile);
         }
 
+        // Updates station user profile (admin only)
         [HttpPatch]
         [Route("station-user/{userId}")]
         [AdminOnly]
@@ -164,6 +181,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
+        // Gets all station users with optional filtering (admin only)
         [HttpGet]
         [Route("station-users")]
         [AdminOnly]
@@ -179,6 +197,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.UserProfile);
         }
 
+        // Converts user operation status to appropriate HTTP response
         private IHttpActionResult GetErrorResponse(UserOperationStatus status, string errorMessage)
         {
             switch (status)

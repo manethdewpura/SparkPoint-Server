@@ -1,4 +1,12 @@
-﻿using System;
+﻿/*
+ * WebApiConfig.cs
+ * 
+ * This file contains Web API configuration settings and middleware setup.
+ * It configures JSON serialization, CORS policies, routing, authentication,
+ * and other global settings for the SparkPoint Web API application.
+ */
+
+using System;
 using System.Configuration;
 using System.Collections.Generic;
 using System.Linq;

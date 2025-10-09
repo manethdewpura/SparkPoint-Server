@@ -1,3 +1,12 @@
+/*
+ * ChargingStationEnums.cs
+ * 
+ * This file contains charging station-related enumerations used throughout the system.
+ * It includes operation status, filter types, sort fields, station types,
+ * and validation errors for charging station operations.
+ * 
+ */
+
 namespace SparkPoint_Server.Enums
 {
     public enum StationOperationStatus

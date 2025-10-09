@@ -1,3 +1,12 @@
+/*
+ * RoleAuthorizeMiddleware.cs
+ * 
+ * This middleware provides role-based authorization for API endpoints.
+ * It validates JWT tokens and checks user roles against required permissions,
+ * supporting both Bearer token authentication and cookie-based authentication.
+ * 
+ */
+
 using System;
 using System.Linq;
 using System.Net;

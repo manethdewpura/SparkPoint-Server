@@ -1,3 +1,11 @@
+/*
+ * AuthorizationConstants.cs
+ * 
+ * This file contains authorization-related constants used throughout the system.
+ * It defines role strings and role groups for authorization attributes,
+ * providing convenient groupings for common authorization scenarios.
+ */
+
 using SparkPoint_Server.Constants;
 
 namespace SparkPoint_Server.Constants

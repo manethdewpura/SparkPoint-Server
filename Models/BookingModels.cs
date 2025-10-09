@@ -1,4 +1,13 @@
-﻿using MongoDB.Bson;
+﻿/*
+ * BookingModels.cs
+ * 
+ * This file contains all data models related to booking operations.
+ * It includes the Booking entity class and various request/response models
+ * for booking operations such as creation, updates, filtering, and management.
+ * 
+ */
+
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System;
 using System.Collections.Generic;

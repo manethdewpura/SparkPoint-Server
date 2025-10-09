@@ -1,4 +1,13 @@
-﻿using SparkPoint_Server.Constants;
+﻿/*
+ * AuthModels.cs
+ * 
+ * This file contains all data models related to authentication operations.
+ * It includes login/refresh models, token management entities, authentication results,
+ * and session management models. All models support both web and mobile client scenarios.
+ * 
+ */
+
+using SparkPoint_Server.Constants;
 using SparkPoint_Server.Enums;
 using System;
 using System.Collections.Generic;

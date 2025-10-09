@@ -1,3 +1,11 @@
+/*
+ * EVOwnersController.cs
+ * 
+ * This controller handles all HTTP requests related to EV Owner operations.
+ * It provides endpoints for EV Owner registration, profile management, account activation/deactivation,
+ * and profile retrieval. All operations are secured with appropriate authorization attributes.
+ */
+
 using System;
 using System.Security.Claims;
 using System.Web.Http;
@@ -14,11 +22,13 @@ namespace SparkPoint_Server.Controllers
     {
         private readonly EVOwnerService _evOwnerService;
 
+        // Constructor: Initializes the EVOwnerService dependency
         public EVOwnersController()
         {
             _evOwnerService = new EVOwnerService();
         }
 
+        // Registers a new EV Owner with the system
         [HttpPost]
         [Route("register")]
         public IHttpActionResult Register(EVOwnerRegisterModel model)
@@ -33,6 +43,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
+        // Updates the profile of the currently authenticated EV Owner
         [HttpPatch]
         [Route("update")]
         [EVOwnerOnly]
@@ -56,6 +67,29 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
+        // Allows admin to update any EV Owner profile by NIC
+        [HttpPatch]
+        [Route("admin/update/{nic}")]
+        [AdminOnly]
+        public IHttpActionResult AdminUpdateProfile(string nic, EVOwnerAdminUpdateModel model)
+        {
+            if (string.IsNullOrEmpty(nic))
+                return BadRequest("NIC is required.");
+
+            if (model == null)
+                return BadRequest("Update data is required.");
+
+            var result = _evOwnerService.AdminUpdateProfile(nic, model);
+            
+            if (!result.IsSuccess)
+            {
+                return GetErrorResponse(result.Status, result.Message);
+            }
+
+            return Ok(result.Message);
+        }
+
+        // Deactivates the currently authenticated EV Owner account
         [HttpPatch]
         [Route("deactivate")]
         [EVOwnerOnly]
@@ -76,6 +110,27 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
+        // Allows admin to deactivate any EV Owner account by NIC
+        [HttpPatch]
+        [Route("admin/deactivate/{nic}")]
+        [AdminOnly]
+        [OwnAccountMiddleware("nic")]
+        public IHttpActionResult AdminDeactivateAccount(string nic)
+        {
+            if (string.IsNullOrEmpty(nic))
+                return BadRequest("NIC is required.");
+
+            var result = _evOwnerService.AdminDeactivateAccount(nic);
+            
+            if (!result.IsSuccess)
+            {
+                return GetErrorResponse(result.Status, result.Message);
+            }
+
+            return Ok(result.Message);
+        }
+
+        // Allows admin to reactivate a deactivated EV Owner account by NIC
         [HttpPatch]
         [Route("reactivate/{nic}")]
         [AdminOnly]
@@ -92,6 +147,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
+        // Retrieves the profile of the currently authenticated EV Owner
         [HttpGet]
         [Route("profile")]
         [EVOwnerOnly]
@@ -112,6 +168,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.UserProfile);
         }
 
+        // Retrieves EV Owner profile by NIC (admin and station user access)
         [HttpGet]
         [Route("profile/{nic}")]
         [AdminAndStationUser]
@@ -128,6 +185,23 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.UserProfile);
         }
 
+        // Retrieves all EV Owners with optional filtering (admin only)
+        [HttpGet]
+        [Route("all")]
+        [AdminOnly]
+        public IHttpActionResult GetAllEVOwners([FromUri] EVOwnerListFilterModel filter = null)
+        {
+            var result = _evOwnerService.GetAllEVOwners(filter);
+            
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result.ErrorMessage);
+            }
+
+            return Ok(result.UserProfile);
+        }
+
+        // Maps EV Owner operation status to appropriate HTTP response
         private IHttpActionResult GetErrorResponse(EVOwnerOperationStatus status, string errorMessage)
         {
             switch (status)

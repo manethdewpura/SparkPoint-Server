@@ -1,3 +1,11 @@
+/*
+ * HealthController.cs
+ * 
+ * This controller provides health check endpoints for monitoring the application status.
+ * It includes basic health checks, detailed health checks with database connectivity,
+ * CORS testing, and readiness/liveness probes for container orchestration.
+ */
+
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -13,11 +21,13 @@ namespace SparkPoint_Server.Controllers
     {
         private readonly MongoDbContext _dbContext;
 
+        // Constructor: Initializes MongoDB database context for health checks
         public HealthController()
         {
             _dbContext = new MongoDbContext();
         }
 
+        // Provides basic application health status
         [HttpGet]
         [Route("")]
         public IHttpActionResult GetHealth()
@@ -48,6 +58,7 @@ namespace SparkPoint_Server.Controllers
             }
         }
 
+        // Tests CORS configuration and environment variables
         [HttpGet]
         [Route("cors")]
         public IHttpActionResult TestCors()
@@ -75,6 +86,7 @@ namespace SparkPoint_Server.Controllers
             }
         }
 
+        // Handles OPTIONS requests for basic health endpoint
         [HttpOptions]
         [Route("")]
         public IHttpActionResult Options()
@@ -82,6 +94,7 @@ namespace SparkPoint_Server.Controllers
             return Ok();
         }
 
+        // Handles OPTIONS requests for CORS test endpoint
         [HttpOptions]
         [Route("cors")]
         public IHttpActionResult OptionsCors()
@@ -89,6 +102,7 @@ namespace SparkPoint_Server.Controllers
             return Ok();
         }
 
+        // Provides detailed health check including database connectivity
         [HttpGet]
         [Route("detailed")]
         public async Task<IHttpActionResult> GetDetailedHealth()
@@ -155,6 +169,7 @@ namespace SparkPoint_Server.Controllers
             return Content(statusCode, result);
         }
 
+        // Provides readiness probe for container orchestration
         [HttpGet]
         [Route("ready")]
         public async Task<IHttpActionResult> GetReadiness()
@@ -177,6 +192,7 @@ namespace SparkPoint_Server.Controllers
             }
         }
 
+        // Provides liveness probe for container orchestration
         [HttpGet]
         [Route("live")]
         public IHttpActionResult GetLiveness()

@@ -1,3 +1,11 @@
+/*
+ * UserConstants.cs
+ * 
+ * This file contains user-related constants used throughout the system.
+ * It includes validation messages, success messages, field length limits,
+ * and collection names for user management operations.
+ */
+
 namespace SparkPoint_Server.Constants
 {
     public static class EVOwnerConstants

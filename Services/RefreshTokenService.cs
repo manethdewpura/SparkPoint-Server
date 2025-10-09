@@ -1,3 +1,12 @@
+/*
+ * RefreshTokenService.cs
+ * 
+ * This service handles refresh token management and security operations.
+ * It manages token creation, validation, revocation, and cleanup with proper
+ * security measures including token families and reuse detection.
+ * 
+ */
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,6 +24,7 @@ namespace SparkPoint_Server.Services
         private readonly IMongoCollection<RefreshTokenEntry> _refreshTokensCollection;
         private readonly IMongoCollection<User> _usersCollection;
 
+        // Constructor: Initializes MongoDB collections and ensures proper indexes
         public RefreshTokenService()
         {
             var dbContext = new MongoDbContext();
@@ -24,6 +34,8 @@ namespace SparkPoint_Server.Services
             EnsureIndexes();
         }
 
+        // Creates a new refresh token with proper security measures
+        // Creates a new refresh token with proper security measures
         public RefreshTokenEntry CreateRefreshToken(string userId, RefreshTokenContext context, string parentTokenId = null)
         {
             var token = TokenSecurityUtils.GenerateRefreshToken();
@@ -56,6 +68,8 @@ namespace SparkPoint_Server.Services
             return tokenEntry;
         }
 
+        // Validates and consumes a refresh token (marks as used)
+        // Validates and consumes a refresh token (marks as used)
         public RefreshTokenValidationResult ValidateAndConsumeToken(string userId, string token, RefreshTokenContext context)
         {
             var userTokens = _refreshTokensCollection
@@ -95,6 +109,8 @@ namespace SparkPoint_Server.Services
             return RefreshTokenValidationResult.Success(matchingToken);
         }
 
+        // Validates a refresh token without consuming it
+        // Validates a refresh token without consuming it
         public RefreshTokenValidationResult ValidateRefreshToken(string userId, string token, RefreshTokenContext context)
         {
             var userTokens = _refreshTokensCollection
@@ -126,6 +142,8 @@ namespace SparkPoint_Server.Services
             return RefreshTokenValidationResult.Success(matchingToken);
         }
 
+        // Revokes a specific token by token ID
+        // Revokes a specific token by token ID
         public void RevokeToken(string tokenId, TokenRevocationReason reason)
         {
             var update = Builders<RefreshTokenEntry>.Update
@@ -136,6 +154,8 @@ namespace SparkPoint_Server.Services
             _refreshTokensCollection.UpdateOne(t => t.TokenId == tokenId, update);
         }
 
+        // Revokes all tokens in a token family
+        // Revokes all tokens in a token family
         public void RevokeFamilyTokens(string familyId, TokenRevocationReason reason)
         {
             var update = Builders<RefreshTokenEntry>.Update
@@ -146,6 +166,8 @@ namespace SparkPoint_Server.Services
             _refreshTokensCollection.UpdateMany(t => t.FamilyId == familyId, update);
         }
 
+        // Revokes all tokens for a specific user
+        // Revokes all tokens for a specific user
         public void RevokeAllUserTokens(string userId, TokenRevocationReason reason)
         {
             var update = Builders<RefreshTokenEntry>.Update
@@ -156,6 +178,8 @@ namespace SparkPoint_Server.Services
             _refreshTokensCollection.UpdateMany(t => t.UserId == userId, update);
         }
 
+        // Gets all active tokens for a user
+        // Gets all active tokens for a user
         public List<RefreshTokenEntry> GetActiveUserTokens(string userId)
         {
 			var now = DateTime.UtcNow;
@@ -165,6 +189,8 @@ namespace SparkPoint_Server.Services
                 .ToList();
         }
 
+        // Cleans up expired and old revoked tokens
+        // Cleans up expired and old revoked tokens
         public void CleanupExpiredTokens()
         {
             var cutoffDate = DateTime.UtcNow.AddDays(-AuthConstants.RevokedTokenRetentionDays);
@@ -174,6 +200,8 @@ namespace SparkPoint_Server.Services
             _refreshTokensCollection.DeleteMany(t => t.IsRevoked && t.RevokedAt < cutoffDate);
         }
 
+        // Marks a token as used
+        // Marks a token as used
         public void MarkTokenAsUsed(string tokenId, DateTime usedAt)
         {
             var update = Builders<RefreshTokenEntry>.Update
@@ -184,6 +212,8 @@ namespace SparkPoint_Server.Services
             _refreshTokensCollection.UpdateOne(t => t.TokenId == tokenId, update);
         }
 
+        // Updates the last used timestamp for a token
+        // Updates the last used timestamp for a token
         public void UpdateTokenLastUsed(string tokenId, DateTime usedAt)
         {
             var update = Builders<RefreshTokenEntry>.Update
@@ -192,6 +222,7 @@ namespace SparkPoint_Server.Services
             _refreshTokensCollection.UpdateOne(t => t.TokenId == tokenId, update);
         }
 
+        // Gets token family ID from parent token
         private string GetTokenFamilyId(string tokenId)
         {
             var token = _refreshTokensCollection
@@ -201,6 +232,7 @@ namespace SparkPoint_Server.Services
             return token?.FamilyId;
         }
 
+        // Cleans up old tokens for a user to maintain limits
         private void CleanupOldTokensForUser(string userId)
         {
             var activeTokens = GetActiveUserTokens(userId);
@@ -218,6 +250,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Ensures proper database indexes for performance
         private void EnsureIndexes()
         {
             var indexKeys = Builders<RefreshTokenEntry>.IndexKeys;

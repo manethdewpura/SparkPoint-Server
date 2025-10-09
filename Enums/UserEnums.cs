@@ -1,3 +1,12 @@
+/*
+ * UserEnums.cs
+ * 
+ * This file contains user-related enumerations used throughout the system.
+ * It includes operation status, validation errors, filter types, and sort fields
+ * for user management and EV owner operations.
+ * 
+ */
+
 namespace SparkPoint_Server.Enums
 {
     public enum UserOperationStatus

@@ -1,3 +1,12 @@
+/*
+ * ChargingStationHelper.cs
+ * 
+ * This helper class provides charging station-related MongoDB operations.
+ * It includes filter building for station queries, sorting definitions,
+ * and update builders for charging station operations.
+ * 
+ */
+
 using System.Collections.Generic;
 using System.Linq;
 using MongoDB.Driver;
@@ -9,6 +18,7 @@ namespace SparkPoint_Server.Helpers
 {
     public static class ChargingStationFilterHelper
     {
+        // Builds MongoDB filter for charging station queries based on provided filter criteria
         public static FilterDefinition<ChargingStation> BuildStationFilter(StationFilterModel filter)
         {
             var filterBuilder = Builders<ChargingStation>.Filter.Empty;
@@ -38,6 +48,7 @@ namespace SparkPoint_Server.Helpers
             return filterBuilder;
         }
 
+        // Builds search filter for station queries using regex pattern matching
         private static FilterDefinition<ChargingStation> BuildSearchFilter(string searchTerm)
         {
             // Search in station name, type, address, city, and province
@@ -69,6 +80,7 @@ namespace SparkPoint_Server.Helpers
             return Builders<ChargingStation>.Filter.Or(nameFilter, typeFilter, addressFilter, cityFilter, provinceFilter);
         }
 
+        // Builds location-based filter for nearby station searches
         private static FilterDefinition<ChargingStation> BuildLocationFilter(LocationCoordinates center, double maxDistanceKm)
         {
             // Simple bounding box filter for location-based search
@@ -89,6 +101,7 @@ namespace SparkPoint_Server.Helpers
             );
         }
 
+        // Builds MongoDB sort definition for charging station queries
         public static SortDefinition<ChargingStation> BuildStationSort(StationSortField sortField, SortOrder sortOrder)
         {
             var sortBuilder = Builders<ChargingStation>.Sort;
@@ -163,6 +176,7 @@ namespace SparkPoint_Server.Helpers
 
     public static class ChargingStationUpdateHelper
     {
+        // Builds MongoDB update definition for charging station updates
         public static UpdateDefinition<ChargingStation> BuildStationUpdate(StationUpdateModel model, ChargingStation currentStation)
         {
             var updateBuilder = Builders<ChargingStation>.Update.Set(s => s.UpdatedAt, System.DateTime.UtcNow);
@@ -230,6 +244,7 @@ namespace SparkPoint_Server.Helpers
             return updateBuilder;
         }
 
+        // Builds MongoDB update definition for station activation
         public static UpdateDefinition<ChargingStation> BuildActivationUpdate()
         {
             return Builders<ChargingStation>.Update
@@ -237,6 +252,7 @@ namespace SparkPoint_Server.Helpers
                 .Set(s => s.UpdatedAt, System.DateTime.UtcNow);
         }
 
+        // Builds MongoDB update definition for station deactivation
         public static UpdateDefinition<ChargingStation> BuildDeactivationUpdate()
         {
             return Builders<ChargingStation>.Update

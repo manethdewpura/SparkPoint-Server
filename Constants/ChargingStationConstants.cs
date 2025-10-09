@@ -1,3 +1,11 @@
+/*
+ * ChargingStationConstants.cs
+ * 
+ * This file contains charging station-related constants used throughout the system.
+ * It includes validation messages, success messages, field length limits,
+ * collection names, and validation constants for charging station operations.
+ */
+
 namespace SparkPoint_Server.Constants
 {
     public static class ChargingStationConstants

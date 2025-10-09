@@ -1,4 +1,13 @@
-﻿using MongoDB.Bson;
+﻿/*
+ * EVOwnerModels.cs
+ * 
+ * This file contains all data models related to EV Owner entities.
+ * It includes the EVOwner entity class and various request/response models
+ * for EV Owner operations such as registration, updates, and profile management.
+ * 
+ */
+
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System;
 
@@ -42,5 +51,21 @@ namespace SparkPoint_Server.Models
         public string Email { get; set; }
         public string Phone { get; set; }
         public string Password { get; set; }
+    }
+
+    public class EVOwnerAdminUpdateModel
+    {
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string Email { get; set; }
+        public string Phone { get; set; }
+        public string Password { get; set; }
+
+    }
+
+    public class EVOwnerListFilterModel
+    {
+        public bool? IsActive { get; set; }
+        public string SearchTerm { get; set; }
     }
 }
