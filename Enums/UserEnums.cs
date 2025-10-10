@@ -62,6 +62,7 @@ namespace SparkPoint_Server.Enums
         PhoneTooShort,
         PhoneTooLong,
         PhoneInvalid,
+        NICRequired,
         NICTooShort,
         NICTooLong,
         NICInvalid,

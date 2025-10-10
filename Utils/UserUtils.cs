@@ -101,14 +101,21 @@ namespace SparkPoint_Server.Utils
             else if (!IsValidPhone(model.Phone))
                 errors.Add(UserValidationError.PhoneInvalid);
 
-            if (string.IsNullOrEmpty(model.NIC))
-                errors.Add(UserValidationError.NICInvalid);
-            else if (model.NIC.Length < EVOwnerConstants.MinNICLength)
-                errors.Add(UserValidationError.NICTooShort);
-            else if (model.NIC.Length > EVOwnerConstants.MaxNICLength)
-                errors.Add(UserValidationError.NICTooLong);
-            else if (!IsValidNIC(model.NIC))
-                errors.Add(UserValidationError.NICInvalid);
+            // Fixed NIC validation logic
+            if (string.IsNullOrWhiteSpace(model.NIC))
+            {
+                errors.Add(UserValidationError.NICRequired);
+            }
+            else
+            {
+                var trimmedNIC = model.NIC.Trim();
+                if (trimmedNIC.Length < EVOwnerConstants.MinNICLength)
+                    errors.Add(UserValidationError.NICTooShort);
+                else if (trimmedNIC.Length > EVOwnerConstants.MaxNICLength)
+                    errors.Add(UserValidationError.NICTooLong);
+                else if (!IsValidNIC(trimmedNIC))
+                    errors.Add(UserValidationError.NICInvalid);
+            }
 
             return errors.Any() ? UserValidationResult.Failed(errors) : UserValidationResult.Success();
         }
@@ -314,8 +321,10 @@ namespace SparkPoint_Server.Utils
             if (string.IsNullOrWhiteSpace(nic))
                 return false;
 
-            var nicRegex = new Regex(@"^[0-9]{9}[vV]$|^[0-9]{12}$");
-            return nicRegex.IsMatch(nic.Trim());
+            var trimmedNIC = nic.Trim();
+            
+            var nicRegex = new Regex(@"^(?:[0-9]{9}[vVxX]|[0-9]{12})$");
+            return nicRegex.IsMatch(trimmedNIC);
         }
 
         // Sanitizes input string by trimming whitespace
