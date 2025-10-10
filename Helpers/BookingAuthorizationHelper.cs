@@ -75,6 +75,8 @@ namespace SparkPoint_Server.Helpers
         {
             if (userContext?.IsAdmin == true)
                 return AuthorizationResult.Success();
+            if (userContext?.IsStationUser == true)
+                return AuthorizationResult.Success();
 
             if (userContext?.IsEVOwner == true)
             {

@@ -113,7 +113,7 @@ namespace SparkPoint_Server.Controllers
         // Cancels an existing booking
         [HttpPatch]
         [Route("cancel/{bookingId}")]
-        [AdminAndEVOwner]
+        [AllRoles]
         public IHttpActionResult CancelBooking(string bookingId)
         {
             var userContext = UserContextHelper.GetUserContext(this);
