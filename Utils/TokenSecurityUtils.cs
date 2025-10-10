@@ -19,7 +19,6 @@ namespace SparkPoint_Server.Utils
         private const int TokenSize = 32;
 
         // Generates a cryptographically secure salt
-        // Generates a cryptographically secure salt
         public static string GenerateSalt()
         {
             using (var rng = RandomNumberGenerator.Create())
@@ -31,7 +30,6 @@ namespace SparkPoint_Server.Utils
         }
 
         // Generates a cryptographically secure refresh token
-        // Generates a cryptographically secure refresh token
         public static string GenerateRefreshToken()
         {
             using (var rng = RandomNumberGenerator.Create())
@@ -42,7 +40,6 @@ namespace SparkPoint_Server.Utils
             }
         }
 
-        // Hashes a token with salt using SHA256
         // Hashes a token with salt using SHA256
         public static string HashToken(string token, string salt)
         {
@@ -64,7 +61,6 @@ namespace SparkPoint_Server.Utils
         }
 
         // Verifies a token against its stored hash and salt
-        // Verifies a token against its stored hash and salt
         public static bool VerifyToken(string token, string storedHash, string salt)
         {
             if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(storedHash) || string.IsNullOrEmpty(salt))
@@ -82,7 +78,6 @@ namespace SparkPoint_Server.Utils
         }
 
         // Generates a unique token ID
-        // Generates a unique token ID
         public static string GenerateTokenId()
         {
             using (var rng = RandomNumberGenerator.Create())
@@ -93,7 +88,6 @@ namespace SparkPoint_Server.Utils
             }
         }
 
-        // Extracts device information from user agent string
         // Extracts device information from user agent string
         public static string ExtractDeviceInfo(string userAgent)
         {
@@ -112,7 +106,6 @@ namespace SparkPoint_Server.Utils
             return "Web Browser";
         }
 
-        // Validates if a token family ID is properly formatted
         // Validates if a token family ID is properly formatted
         public static bool IsValidTokenFamilyId(string familyId)
         {

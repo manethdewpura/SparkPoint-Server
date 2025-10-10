@@ -317,7 +317,6 @@ namespace SparkPoint_Server.Services
         }
 
         // Retrieves EV Owner record by user ID
-        // Retrieves EV Owner record by user ID
         public EVOwner GetEVOwnerByUserId(string userId)
         {
             try
@@ -331,7 +330,6 @@ namespace SparkPoint_Server.Services
         }
 
         // Retrieves EV Owner record by NIC
-        // Retrieves EV Owner record by NIC
         public EVOwner GetEVOwnerByNIC(string nic)
         {
             try
@@ -344,7 +342,6 @@ namespace SparkPoint_Server.Services
             }
         }
 
-        // Updates EV Owner profile by NIC (internal method)
         // Updates EV Owner profile by NIC (internal method)
         public EVOwnerOperationResult UpdateProfileByNIC(string nic, EVOwnerUpdateModel model)
         {
@@ -405,7 +402,6 @@ namespace SparkPoint_Server.Services
             }
         }
 
-        // Updates EV Owner profile by NIC with admin privileges
         // Updates EV Owner profile by NIC with admin privileges
         public EVOwnerOperationResult AdminUpdateProfile(string nic, EVOwnerAdminUpdateModel model)
         {

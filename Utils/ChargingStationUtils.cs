@@ -145,7 +145,6 @@ namespace SparkPoint_Server.Utils
         }
 
         // Validates location coordinates for longitude and latitude ranges
-        // Validates location coordinates for longitude and latitude ranges
         public static List<StationValidationError> ValidateLocationCoordinates(LocationCoordinates coordinates)
         {
             var errors = new List<StationValidationError>();
@@ -166,13 +165,11 @@ namespace SparkPoint_Server.Utils
         }
 
         // Validates if the station type is supported
-        // Validates if the station type is supported
         public static bool IsValidStationType(string type)
         {
             return ChargingStationConstants.ValidStationTypes.Contains(type, StringComparer.OrdinalIgnoreCase);
         }
 
-        // Validates email format using regex pattern
         // Validates email format using regex pattern
         public static bool IsValidEmail(string email)
         {
@@ -192,7 +189,6 @@ namespace SparkPoint_Server.Utils
         }
 
         // Calculates new available slots when total slots change
-        // Calculates new available slots when total slots change
         public static int CalculateNewAvailableSlots(int currentAvailable, int currentTotal, int newTotal)
         {
             var usedSlots = currentTotal - currentAvailable;
@@ -200,7 +196,6 @@ namespace SparkPoint_Server.Utils
             return Math.Max(0, Math.Min(newTotal, newAvailable));
         }
 
-        // Converts string station type to enum
         // Converts string station type to enum
         public static StationType GetStationTypeEnum(string type)
         {
@@ -216,7 +211,6 @@ namespace SparkPoint_Server.Utils
         }
 
         // Converts station type enum to string
-        // Converts station type enum to string
         public static string GetStationTypeString(StationType type)
         {
             switch (type)
@@ -230,7 +224,6 @@ namespace SparkPoint_Server.Utils
             }
         }
 
-        // Sanitizes station name by trimming whitespace
         // Sanitizes station name by trimming whitespace
         public static string SanitizeName(string name)
         {
@@ -285,7 +278,6 @@ namespace SparkPoint_Server.Utils
             return contactEmail.Trim().ToLowerInvariant();
         }
 
-        // Sanitizes location coordinates and ensures they are within valid ranges
         // Sanitizes location coordinates and ensures they are within valid ranges
         public static LocationCoordinates SanitizeLocation(LocationCoordinates location)
         {
@@ -347,7 +339,6 @@ namespace SparkPoint_Server.Utils
         }
 
         // Calculates distance between two coordinates using Haversine formula
-        // Calculates distance between two coordinates using Haversine formula
         public static double CalculateDistance(LocationCoordinates coord1, LocationCoordinates coord2)
         {
             const double EarthRadius = 6371; // Earth's radius in kilometers
@@ -365,7 +356,6 @@ namespace SparkPoint_Server.Utils
             return EarthRadius * c;
         }
 
-        // Converts degrees to radians for distance calculations
         // Converts degrees to radians for distance calculations
         private static double ToRadians(double degrees)
         {

@@ -58,7 +58,6 @@ namespace SparkPoint_Server.Utils
         }
 
         // Validates EV Owner registration model data including NIC and phone
-        // Validates EV Owner registration model data including NIC and phone
         public static UserValidationResult ValidateEVOwnerRegisterModel(EVOwnerRegisterModel model)
         {
             if (model == null)
@@ -115,7 +114,6 @@ namespace SparkPoint_Server.Utils
         }
 
         // Validates station user creation model data
-        // Validates station user creation model data
         public static UserValidationResult ValidateCreateStationUserModel(CreateStationUserModel model)
         {
             if (model == null)
@@ -157,7 +155,6 @@ namespace SparkPoint_Server.Utils
         }
 
         // Validates user update model data
-        // Validates user update model data
         public static UserValidationResult ValidateUserUpdateModel(UserUpdateModel model)
         {
             if (model == null)
@@ -198,7 +195,6 @@ namespace SparkPoint_Server.Utils
             return errors.Any() ? UserValidationResult.Failed(errors) : UserValidationResult.Success();
         }
 
-        // Validates EV Owner update model data
         // Validates EV Owner update model data
         public static UserValidationResult ValidateEVOwnerUpdateModel(EVOwnerUpdateModel model)
         {
@@ -243,7 +239,6 @@ namespace SparkPoint_Server.Utils
         }
 
         // Validates EV Owner admin update model data
-        // Validates EV Owner admin update model data
         public static UserValidationResult ValidateEVOwnerAdminUpdateModel(EVOwnerAdminUpdateModel model)
         {
             if (model == null)
@@ -287,7 +282,6 @@ namespace SparkPoint_Server.Utils
         }
 
         // Validates email format using regex pattern
-        // Validates email format using regex pattern
         public static bool IsValidEmail(string email)
         {
             if (string.IsNullOrWhiteSpace(email))
@@ -305,7 +299,6 @@ namespace SparkPoint_Server.Utils
         }
 
         // Validates phone number format using regex pattern
-        // Validates phone number format using regex pattern
         public static bool IsValidPhone(string phone)
         {
             if (string.IsNullOrWhiteSpace(phone))
@@ -315,7 +308,6 @@ namespace SparkPoint_Server.Utils
             return phoneRegex.IsMatch(phone.Trim());
         }
 
-        // Validates NIC format using regex pattern
         // Validates NIC format using regex pattern
         public static bool IsValidNIC(string nic)
         {
@@ -327,7 +319,6 @@ namespace SparkPoint_Server.Utils
         }
 
         // Sanitizes input string by trimming whitespace
-        // Sanitizes input string by trimming whitespace
         public static string SanitizeString(string input)
         {
             if (string.IsNullOrWhiteSpace(input))
@@ -336,7 +327,6 @@ namespace SparkPoint_Server.Utils
             return input.Trim();
         }
 
-        // Creates user profile object with optional EV Owner data
         // Creates user profile object with optional EV Owner data
         public static object CreateUserProfile(User user, EVOwner evOwner = null)
         {
@@ -377,7 +367,6 @@ namespace SparkPoint_Server.Utils
         }
 
         // Creates station user profile object
-        // Creates station user profile object
         public static object CreateStationUserProfile(User user)
         {
             return new
@@ -395,7 +384,6 @@ namespace SparkPoint_Server.Utils
                 user.UpdatedAt
             };
         }
-        // Creates station user profile object with charging station details
         // Creates station user profile object with charging station details
         public static object CreateStationUserProfileWithStation(User user, ChargingStation station)
         {

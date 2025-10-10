@@ -58,7 +58,6 @@ namespace SparkPoint_Server.Utils
         }
 
         // Gets filter for active bookings (excludes cancelled/completed bookings)
-        // Gets filter for active bookings (excludes cancelled/completed bookings)
         public static FilterDefinition<Booking> GetActiveBookingsFilter()
         {
             return Builders<Booking>.Filter.Not(
@@ -66,7 +65,6 @@ namespace SparkPoint_Server.Utils
             );
         }
 
-        // Gets filter for conflicting bookings at a specific station and time
         // Gets filter for conflicting bookings at a specific station and time
         public static FilterDefinition<Booking> GetConflictingBookingsFilter(
             string stationId, 
@@ -91,13 +89,11 @@ namespace SparkPoint_Server.Utils
         }
 
         // Gets filter for bookings by owner NIC
-        // Gets filter for bookings by owner NIC
         public static FilterDefinition<Booking> GetOwnerBookingsFilter(string ownerNIC)
         {
             return Builders<Booking>.Filter.Eq(b => b.OwnerNIC, ownerNIC);
         }
 
-        // Gets filter for bookings by station ID
         // Gets filter for bookings by station ID
         public static FilterDefinition<Booking> GetStationBookingsFilter(string stationId)
         {
@@ -105,20 +101,17 @@ namespace SparkPoint_Server.Utils
         }
 
         // Gets filter for bookings by status
-        // Gets filter for bookings by status
         public static FilterDefinition<Booking> GetStatusFilter(string status)
         {
             return Builders<Booking>.Filter.Eq(b => b.Status, status);
         }
 
         // Gets filter for bookings by multiple statuses
-        // Gets filter for bookings by multiple statuses
         public static FilterDefinition<Booking> GetMultipleStatusFilter(string[] statuses)
         {
             return Builders<Booking>.Filter.In(b => b.Status, statuses);
         }
 
-        // Gets filter for bookings within a date range
         // Gets filter for bookings within a date range
         public static FilterDefinition<Booking> GetDateRangeFilter(DateTime? fromDate, DateTime? toDate)
         {
@@ -144,14 +137,12 @@ namespace SparkPoint_Server.Utils
         }
 
         // Gets filter for bookings that can be modified (not too close to reservation time)
-        // Gets filter for bookings that can be modified (not too close to reservation time)
         public static FilterDefinition<Booking> GetModifiableBookingsFilter(double hoursBuffer = ApplicationConstants.MinModificationHours)
         {
             var cutoffTime = DateTime.Now.AddHours(hoursBuffer);
             return Builders<Booking>.Filter.Gte(b => b.ReservationTime, cutoffTime);
         }
 
-        // Gets MongoDB sort definition for booking queries
         // Gets MongoDB sort definition for booking queries
         public static SortDefinition<Booking> GetSortDefinition(BookingSortField sortBy = BookingSortField.CreatedAt, bool ascending = false)
         {

@@ -340,21 +340,21 @@ namespace SparkPoint_Server.Services
 
             // If moving from a slot-reserving status to a slot-freeing status
             if (oldReservesSlot && newFreesSlot)
-                return slotsRequested; // Free the requested slots
+                return slotsRequested;
 
             // If moving from a non-reserving status to a slot-reserving status
             if (!oldReservesSlot && !oldFreesSlot && newReservesSlot)
-                return -slotsRequested; // Reserve the requested slots
+                return -slotsRequested;
 
-            // If moving from a slot-freeing status to a slot-reserving status (rare case)
+            // If moving from a slot-freeing status to a slot-reserving status
             if (oldFreesSlot && newReservesSlot)
-                return -slotsRequested; // Reserve the requested slots
+                return -slotsRequested;
 
             // If moving from "Pending" to "Confirmed" or "In Progress"
             if (oldStatus == BookingStatusConstants.Pending && BookingStatusConstants.IsSlotReservingStatus(newStatus))
-                return -slotsRequested; // Reserve the requested slots
+                return -slotsRequested;
 
-            return 0; // No change in slot allocation
+            return 0;
         }
 
         // Checks if slots are available for booking
@@ -540,8 +540,6 @@ namespace SparkPoint_Server.Services
                 // If location is provided, filter by distance
                 if (latitude.HasValue && longitude.HasValue)
                 {
-                    // For MongoDB with location queries, you would typically use $near or $geoWithin
-                    // For now, we'll get all stations and filter in memory (not optimal for large datasets)
                     var allStations = _stationsCollection.Find(stationsFilter).ToList();
                     
                     var nearbyStations = allStations.Where(station => 
@@ -623,7 +621,7 @@ namespace SparkPoint_Server.Services
         private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
         {
             // Haversine formula to calculate distance between two coordinates
-            const double R = 6371; // Earth's radius in kilometers
+            const double R = 6371;
             
             var dLat = ToRadians(lat2 - lat1);
             var dLon = ToRadians(lon2 - lon1);
@@ -642,8 +640,6 @@ namespace SparkPoint_Server.Services
         {
             return degrees * (Math.PI / 180);
         }
-
-        // ...existing other methods...
     }
 
     // Result classes for service operations

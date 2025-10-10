@@ -27,7 +27,6 @@ namespace SparkPoint_Server.Services
         }
 
         // Starts the background token cleanup timer
-        // Starts the background token cleanup timer
         public void Start()
         {
             lock (_lock)
@@ -40,7 +39,6 @@ namespace SparkPoint_Server.Services
         }
 
         // Stops the cleanup service and unregisters from hosting environment
-        // Stops the cleanup service and unregisters from hosting environment
         public void Stop(bool immediate)
         {
             lock (_lock)
@@ -51,7 +49,6 @@ namespace SparkPoint_Server.Services
             HostingEnvironment.UnregisterObject(this);
         }
 
-        // Performs the actual token cleanup work
         // Performs the actual token cleanup work
         private void DoWork(object state)
         {
