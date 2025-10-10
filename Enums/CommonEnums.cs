@@ -1,3 +1,12 @@
+/*
+ * CommonEnums.cs
+ * 
+ * This file contains common enumerations used throughout the system.
+ * It includes user roles, booking statuses, sort orders, and filter operations
+ * that are shared across multiple modules.
+ * 
+ */
+
 namespace SparkPoint_Server.Enums
 {
     public enum UserRole

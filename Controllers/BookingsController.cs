@@ -1,4 +1,12 @@
-﻿using System;
+﻿/*
+ * BookingsController.cs
+ * 
+ * This controller handles all HTTP requests related to booking operations.
+ * It provides endpoints for creating, retrieving, updating, and managing charging station
+ * bookings. All operations are secured with appropriate role-based authorization.
+ */
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -20,11 +28,13 @@ namespace SparkPoint_Server.Controllers
     {
         private readonly BookingService _bookingService;
 
+        // Constructor: Initializes the BookingService dependency
         public BookingsController()
         {
             _bookingService = new BookingService();
         }
 
+        // Creates a new booking for charging station
         [HttpPost]
         [Route("")]
         [AdminAndEVOwner]
@@ -46,6 +56,7 @@ namespace SparkPoint_Server.Controllers
             });
         }
 
+        // Retrieves bookings with optional filtering
         [HttpGet]
         [Route("")]
         [AllRoles]
@@ -63,6 +74,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Bookings);
         }
 
+        // Retrieves a specific booking by ID
         [HttpGet]
         [Route("{bookingId}")]
         [AllRoles]
@@ -80,7 +92,8 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Booking);
         }
 
-        [HttpPut]
+        // Updates an existing booking
+        [HttpPatch]
         [Route("{bookingId}")]
         [AdminAndEVOwner]
         public IHttpActionResult UpdateBooking(string bookingId, BookingUpdateModel model)
@@ -97,7 +110,8 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
-        [HttpPut]
+        // Cancels an existing booking
+        [HttpPatch]
         [Route("cancel/{bookingId}")]
         [AdminAndEVOwner]
         public IHttpActionResult CancelBooking(string bookingId)
@@ -114,7 +128,8 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
-        [HttpPut]
+        // Updates booking status (admin and station users only)
+        [HttpPatch]
         [Route("status/{bookingId}")]
         [AdminAndStationUser]
         public IHttpActionResult UpdateBookingStatus(string bookingId, BookingStatusUpdateModel model)
@@ -131,17 +146,46 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
+        // Gets station availability for a specific date
         [HttpGet]
-        [Route("availability/{stationId}")]
+        [Route("availability/{stationId}/date/{date}")]
         [AllRoles]
-        public IHttpActionResult CheckSlotAvailability(string stationId, [FromUri] DateTime reservationTime)
+        public IHttpActionResult GetStationAvailabilityForDate(string stationId, DateTime date)
         {
-            var result = _bookingService.CheckSlotAvailabilityForResult(stationId, reservationTime);
-            
-            if (!result.IsSuccess)
-                return BadRequest(result.ErrorMessage);
+            try
+            {
+                var timeSlots = TimeSlotConstants.GetAvailableTimeSlotsForDate(date);
+                var availabilityInfo = new List<object>();
 
-            return Ok(result.AvailabilityData);
+                foreach (var slot in timeSlots)
+                {
+                    if (!TimeSlotConstants.IsWithinOperatingHours(slot))
+                        continue;
+
+                    var availableSlots = _bookingService.GetAvailableSlotsAtTime(stationId, slot);
+                    var isAvailable = availableSlots > 0;
+
+                    availabilityInfo.Add(new
+                    {
+                        StartTime = slot,
+                        EndTime = TimeSlotConstants.GetSlotEndTime(slot),
+                        DisplayName = TimeSlotConstants.GetSlotDisplayName(slot),
+                        AvailableSlots = availableSlots,
+                        IsAvailable = isAvailable
+                    });
+                }
+
+                return Ok(new
+                {
+                    StationId = stationId,
+                    Date = date.Date,
+                    AvailabilityInfo = availabilityInfo
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Error retrieving station availability: {ex.Message}");
+            }
         }
     }
 }

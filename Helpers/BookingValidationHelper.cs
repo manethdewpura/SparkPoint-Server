@@ -1,3 +1,12 @@
+/*
+ * BookingValidationHelper.cs
+ * 
+ * This helper class provides booking validation functionality.
+ * It validates booking creation, updates, cancellations, and status changes
+ * with proper business rules and time constraints.
+ * 
+ */
+
 using System;
 using SparkPoint_Server.Models;
 using SparkPoint_Server.Constants;
@@ -7,6 +16,7 @@ namespace SparkPoint_Server.Helpers
     public static class BookingValidationHelper
     {
 
+        // Validates booking creation model data
         public static ValidationResult ValidateCreateBooking(BookingCreateModel model)
         {
             if (model == null)
@@ -22,9 +32,18 @@ namespace SparkPoint_Server.Helpers
             if (!reservationTimeResult.IsValid)
                 return reservationTimeResult;
 
+            var timeSlotResult = ValidateTimeSlot(model.ReservationTime);
+            if (!timeSlotResult.IsValid)
+                return timeSlotResult;
+
+            var slotsResult = ValidateSlotsRequested(model.SlotsRequested);
+            if (!slotsResult.IsValid)
+                return slotsResult;
+
             return ValidationResult.Success();
         }
 
+        // Validates booking update model data
         public static ValidationResult ValidateUpdateBooking(BookingUpdateModel model, Booking currentBooking)
         {
             if (model == null)
@@ -48,11 +67,23 @@ namespace SparkPoint_Server.Helpers
                 var reservationTimeResult = ValidateReservationTime(model.ReservationTime.Value);
                 if (!reservationTimeResult.IsValid)
                     return reservationTimeResult;
+
+                var timeSlotResult = ValidateTimeSlot(model.ReservationTime.Value);
+                if (!timeSlotResult.IsValid)
+                    return timeSlotResult;
+            }
+
+            if (model.SlotsRequested.HasValue)
+            {
+                var slotsResult = ValidateSlotsRequested(model.SlotsRequested.Value);
+                if (!slotsResult.IsValid)
+                    return slotsResult;
             }
 
             return ValidationResult.Success();
         }
 
+        // Validates reservation time constraints
         public static ValidationResult ValidateReservationTime(DateTime reservationTime)
         {
             var daysFromNow = (reservationTime.Date - DateTime.Now.Date).Days;
@@ -66,6 +97,31 @@ namespace SparkPoint_Server.Helpers
             return ValidationResult.Success();
         }
 
+        // Validates time slot availability and operating hours
+        public static ValidationResult ValidateTimeSlot(DateTime reservationTime)
+        {
+            if (!TimeSlotConstants.IsValidTimeSlot(reservationTime))
+                return ValidationResult.Failed("Invalid time slot. Please select from available time slots.");
+
+            if (!TimeSlotConstants.IsWithinOperatingHours(reservationTime))
+                return ValidationResult.Failed("Time slot is outside station operating hours (6:00 AM - 12:00 AM).");
+
+            return ValidationResult.Success();
+        }
+
+        // Validates number of slots requested
+        public static ValidationResult ValidateSlotsRequested(int slotsRequested)
+        {
+            if (slotsRequested <= 0)
+                return ValidationResult.Failed("Number of slots requested must be greater than 0.");
+
+            if (slotsRequested > ApplicationConstants.MaxSlotsPerBooking)
+                return ValidationResult.Failed($"Maximum {ApplicationConstants.MaxSlotsPerBooking} slots allowed per booking.");
+
+            return ValidationResult.Success();
+        }
+
+        // Validates booking cancellation constraints
         public static ValidationResult ValidateCancelBooking(Booking booking)
         {
             if (booking == null)
@@ -84,6 +140,7 @@ namespace SparkPoint_Server.Helpers
             return ValidationResult.Success();
         }
 
+        // Validates booking status update constraints
         public static ValidationResult ValidateStatusUpdate(BookingStatusUpdateModel model, Booking currentBooking)
         {
             if (model == null || string.IsNullOrEmpty(model.Status))

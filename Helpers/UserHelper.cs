@@ -1,3 +1,12 @@
+/*
+ * UserHelper.cs
+ * 
+ * This helper class provides utility methods for user-related operations.
+ * It includes filtering, sorting, and update building functionality for User entities,
+ * as well as specialized helpers for EV Owner operations.
+ * 
+ */
+
 using System.Collections.Generic;
 using MongoDB.Driver;
 using SparkPoint_Server.Models;
@@ -8,6 +17,7 @@ namespace SparkPoint_Server.Helpers
 {
     public static class UserFilterHelper
     {
+        // Builds MongoDB filter for user queries based on provided filter criteria
         public static FilterDefinition<User> BuildUserFilter(UserListFilterModel filter)
         {
             var filterBuilder = Builders<User>.Filter.Empty;
@@ -36,6 +46,7 @@ namespace SparkPoint_Server.Helpers
             return filterBuilder;
         }
 
+        // Builds search filter for user queries using regex pattern matching
         private static FilterDefinition<User> BuildSearchFilter(string searchTerm)
         {
             var usernameFilter = Builders<User>.Filter.Regex(
@@ -61,6 +72,7 @@ namespace SparkPoint_Server.Helpers
             return Builders<User>.Filter.Or(usernameFilter, emailFilter, firstNameFilter, lastNameFilter);
         }
 
+        // Builds MongoDB sort definition for user queries
         public static SortDefinition<User> BuildUserSort(UserSortField sortField, SortOrder sortOrder)
         {
             var sortBuilder = Builders<User>.Sort;
@@ -120,6 +132,7 @@ namespace SparkPoint_Server.Helpers
 
     public static class UserUpdateHelper
     {
+        // Builds MongoDB update definition for User entity
         public static UpdateDefinition<User> BuildUserUpdate(UserUpdateModel model)
         {
             var updateBuilder = Builders<User>.Update.Set(u => u.UpdatedAt, System.DateTime.UtcNow);
@@ -157,6 +170,7 @@ namespace SparkPoint_Server.Helpers
             return updateBuilder;
         }
 
+        // Builds MongoDB update definition for EVOwner entity
         public static UpdateDefinition<EVOwner> BuildEVOwnerUpdate(EVOwnerUpdateModel model)
         {
             var updateBuilder = Builders<EVOwner>.Update.Set(o => o.UpdatedAt, System.DateTime.UtcNow);
@@ -170,6 +184,21 @@ namespace SparkPoint_Server.Helpers
             return updateBuilder;
         }
 
+        // Builds MongoDB update definition for EVOwner entity with admin privileges
+        public static UpdateDefinition<EVOwner> BuildEVOwnerAdminUpdate(EVOwnerAdminUpdateModel model)
+        {
+            var updateBuilder = Builders<EVOwner>.Update.Set(o => o.UpdatedAt, System.DateTime.UtcNow);
+
+            if (!string.IsNullOrEmpty(model.Phone))
+            {
+                var sanitizedPhone = Utils.UserUtils.SanitizeString(model.Phone);
+                updateBuilder = updateBuilder.Set(o => o.Phone, sanitizedPhone);
+            }
+
+            return updateBuilder;
+        }
+
+        // Builds MongoDB update definition for user activation status
         public static UpdateDefinition<User> BuildActivationUpdate(bool isActive)
         {
             return Builders<User>.Update

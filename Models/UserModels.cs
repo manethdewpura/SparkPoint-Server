@@ -1,3 +1,12 @@
+/*
+ * UserModels.cs
+ * 
+ * This file contains all data models related to user management operations.
+ * It includes the User entity class and various request/response models
+ * for user operations such as registration, updates, filtering, and management.
+ * 
+ */
+
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using SparkPoint_Server.Constants;
@@ -218,11 +227,20 @@ namespace SparkPoint_Server.Models
 
         public static UserValidationResult Failed(List<UserValidationError> errors, string message = null)
         {
+            var errorMessages = new List<string>();
+            
+            foreach (var error in errors)
+            {
+                errorMessages.Add(GetDefaultErrorMessage(error));
+            }
+            
+            var combinedMessage = message ?? string.Join("; ", errorMessages);
+            
             return new UserValidationResult
             {
                 IsValid = false,
                 Errors = errors,
-                ErrorMessage = message ?? "Multiple validation errors occurred"
+                ErrorMessage = combinedMessage
             };
         }
 
@@ -232,10 +250,42 @@ namespace SparkPoint_Server.Models
             {
                 case UserValidationError.UsernameRequired:
                     return UserConstants.UsernameRequired;
+                case UserValidationError.UsernameTooShort:
+                    return $"Username must be at least {UserConstants.MinUsernameLength} characters long.";
+                case UserValidationError.UsernameTooLong:
+                    return $"Username cannot exceed {UserConstants.MaxUsernameLength} characters.";
                 case UserValidationError.EmailRequired:
                     return UserConstants.EmailRequired;
+                case UserValidationError.EmailInvalid:
+                    return "Please enter a valid email address.";
+                case UserValidationError.EmailTooLong:
+                    return $"Email cannot exceed {UserConstants.MaxEmailLength} characters.";
                 case UserValidationError.PasswordRequired:
                     return UserConstants.PasswordRequired;
+                case UserValidationError.PasswordTooShort:
+                    return $"Password must be at least {UserConstants.MinPasswordLength} characters long.";
+                case UserValidationError.PasswordTooLong:
+                    return $"Password cannot exceed {UserConstants.MaxPasswordLength} characters.";
+                case UserValidationError.FirstNameTooLong:
+                    return $"First name cannot exceed {UserConstants.MaxFirstNameLength} characters.";
+                case UserValidationError.LastNameTooLong:
+                    return $"Last name cannot exceed {UserConstants.MaxLastNameLength} characters.";
+                case UserValidationError.PhoneTooShort:
+                    return $"Phone number must be at least {EVOwnerConstants.MinPhoneLength} characters long.";
+                case UserValidationError.PhoneTooLong:
+                    return $"Phone number cannot exceed {EVOwnerConstants.MaxPhoneLength} characters.";
+                case UserValidationError.PhoneInvalid:
+                    return "Please enter a valid phone number.";
+                case UserValidationError.NICRequired:
+                    return EVOwnerConstants.NICRequired;
+                case UserValidationError.NICInvalid:
+                    return EVOwnerConstants.NICInvalidFormat;
+                case UserValidationError.NICTooShort:
+                    return EVOwnerConstants.NICTooShort;
+                case UserValidationError.NICTooLong:
+                    return EVOwnerConstants.NICTooLong;
+                case UserValidationError.ChargingStationIdRequired:
+                    return UserConstants.ChargingStationIdRequired;
                 default:
                     return "Validation error";
             }

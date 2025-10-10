@@ -1,3 +1,12 @@
+/*
+ * AuthEnums.cs
+ * 
+ * This file contains authentication-related enumerations used throughout the system.
+ * It includes authentication status, token refresh status, token types,
+ * and revocation reasons for authentication operations.
+ * 
+ */
+
 namespace SparkPoint_Server.Enums
 {
     public enum AuthenticationStatus
@@ -7,7 +16,8 @@ namespace SparkPoint_Server.Enums
         UserInactive,
         EVOwnerDeactivated,
         UserNotFound,
-        Failed
+        Failed,
+        StationDeactivated
     }
 
     public enum TokenRefreshStatus

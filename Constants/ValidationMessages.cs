@@ -1,3 +1,11 @@
+/*
+ * ValidationMessages.cs
+ * 
+ * This file contains validation error messages used throughout the system.
+ * It includes messages for booking validation, user validation, station validation,
+ * authorization, and status validation operations.
+ */
+
 namespace SparkPoint_Server.Constants
 {
 

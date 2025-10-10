@@ -1,4 +1,14 @@
+/*
+ * UserContextHelper.cs
+ * 
+ * This helper class provides user context extraction and role checking functionality.
+ * It extracts user information from JWT tokens, validates authentication,
+ * and provides convenient methods for role-based authorization checks.
+ * 
+ */
+
 using System.Security.Claims;
+using System.Web;
 using System.Web.Http;
 using SparkPoint_Server.Constants;
 using SparkPoint_Server.Helpers;
@@ -7,6 +17,7 @@ namespace SparkPoint_Server.Helpers
 {
     public static class UserContextHelper
     {
+        // Extracts user context from API controller claims
         public static UserContext GetUserContext(ApiController controller)
         {
             var identity = controller.User.Identity as ClaimsIdentity;
@@ -24,50 +35,72 @@ namespace SparkPoint_Server.Helpers
             };
         }
 
+        private static string GetAccessToken(ApiController controller)
+        {
+            // First, try to get token from Authorization header
+            var authHeader = controller.Request.Headers.Authorization;
+            if (authHeader != null && authHeader.Scheme == "Bearer")
+                return authHeader.Parameter;
+
+            // If no Authorization header, try to get token from cookie (for web clients)
+            if (HttpContext.Current?.Request?.Cookies != null)
+            {
+                var cookie = HttpContext.Current.Request.Cookies[AuthConstants.AccessTokenCookieName];
+                return cookie?.Value;
+            }
+
+            return null;
+        }
+
+        // Gets the current user ID from the access token
         public static string GetCurrentUserId(ApiController controller)
         {
-            var authHeader = controller.Request.Headers.Authorization;
-            if (authHeader == null || authHeader.Scheme != "Bearer")
+            var token = GetAccessToken(controller);
+            if (string.IsNullOrEmpty(token))
                 return null;
 
-            var principal = JwtHelper.ValidateToken(authHeader.Parameter);
+            var principal = JwtHelper.ValidateToken(token);
             if (principal == null)
                 return null;
 
             return principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         }
 
+        // Gets the current user role from the access token
         public static string GetCurrentUserRole(ApiController controller)
         {
-            var authHeader = controller.Request.Headers.Authorization;
-            if (authHeader == null || authHeader.Scheme != "Bearer")
+            var token = GetAccessToken(controller);
+            if (string.IsNullOrEmpty(token))
                 return null;
 
-            var principal = JwtHelper.ValidateToken(authHeader.Parameter);
+            var principal = JwtHelper.ValidateToken(token);
             if (principal == null)
                 return null;
 
             return principal.FindFirst(ClaimTypes.Role)?.Value;
         }
 
+        // Gets the current username from the access token
         public static string GetCurrentUsername(ApiController controller)
         {
-            var authHeader = controller.Request.Headers.Authorization;
-            if (authHeader == null || authHeader.Scheme != "Bearer")
+            var token = GetAccessToken(controller);
+            if (string.IsNullOrEmpty(token))
                 return null;
 
-            var principal = JwtHelper.ValidateToken(authHeader.Parameter);
+            var principal = JwtHelper.ValidateToken(token);
             if (principal == null)
                 return null;
 
             return principal.FindFirst(ClaimTypes.Name)?.Value;
         }
 
+        // Checks if the current user is authenticated
         public static bool IsUserAuthenticated(ApiController controller)
         {
             return !string.IsNullOrEmpty(GetCurrentUserId(controller));
         }
 
+        // Gets the current user role ID as integer
         public static int? GetCurrentUserRoleId(ApiController controller)
         {
             var roleString = GetCurrentUserRole(controller);
@@ -76,30 +109,35 @@ namespace SparkPoint_Server.Helpers
             return null;
         }
 
+        // Checks if the current user is an admin
         public static bool IsCurrentUserAdmin(ApiController controller)
         {
             var roleString = GetCurrentUserRole(controller);
             return roleString == AuthorizationConstants.Roles.Admin;
         }
 
+        // Checks if the current user is a station user
         public static bool IsCurrentUserStationUser(ApiController controller)
         {
             var roleString = GetCurrentUserRole(controller);
             return roleString == AuthorizationConstants.Roles.StationUser;
         }
 
+        // Checks if the current user is an EV owner
         public static bool IsCurrentUserEVOwner(ApiController controller)
         {
             var roleString = GetCurrentUserRole(controller);
             return roleString == AuthorizationConstants.Roles.EVOwner;
         }
 
+        // Checks if the current user has a specific role
         public static bool HasRole(ApiController controller, string role)
         {
             var currentRole = GetCurrentUserRole(controller);
             return currentRole == role;
         }
 
+        // Checks if the current user has any of the specified roles
         public static bool HasAnyRole(ApiController controller, params string[] roles)
         {
             var currentRole = GetCurrentUserRole(controller);

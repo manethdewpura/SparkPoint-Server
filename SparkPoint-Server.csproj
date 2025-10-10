@@ -401,6 +401,7 @@
     <Compile Include="Constants\AuthorizationConstants.cs" />
     <Compile Include="Constants\BookingStatusConstants.cs" />
     <Compile Include="Constants\ChargingStationConstants.cs" />
+    <Compile Include="Constants\TimeSlotConstants.cs" />
     <Compile Include="Constants\UserConstants.cs" />
     <Compile Include="Constants\ValidationMessages.cs" />
     <Compile Include="Controllers\HealthController.cs" />
@@ -451,6 +452,7 @@
   <ItemGroup>
     <Content Include=".env" />
     <None Include="packages.config" />
+    <None Include="Properties\PublishProfiles\Local.pubxml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
@@ -460,6 +462,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
+    <Folder Include="Attributes\" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

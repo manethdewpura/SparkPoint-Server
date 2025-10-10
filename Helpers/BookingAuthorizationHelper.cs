@@ -1,3 +1,11 @@
+/*
+ * BookingAuthorizationHelper.cs
+ * 
+ * This helper class provides booking authorization and access control functionality.
+ * It manages role-based access to booking operations, resolves owner NICs,
+ * and provides appropriate filters for different user roles.
+ */
+
 using System.Linq;
 using MongoDB.Driver;
 using SparkPoint_Server.Models;
@@ -12,6 +20,7 @@ namespace SparkPoint_Server.Helpers
         private readonly IMongoCollection<User> _usersCollection;
         private readonly IMongoCollection<EVOwner> _evOwnersCollection;
 
+        // Constructor: Initializes MongoDB collections for authorization checks
         public BookingAuthorizationHelper()
         {
             var dbContext = new MongoDbContext();
@@ -19,6 +28,7 @@ namespace SparkPoint_Server.Helpers
             _evOwnersCollection = dbContext.GetCollection<EVOwner>("EVOwners");
         }
 
+        // Checks if user can access a specific booking
         public AuthorizationResult CanAccessBooking(UserContext userContext, Booking booking)
         {
             if (userContext?.IsAdmin == true)
@@ -51,6 +61,7 @@ namespace SparkPoint_Server.Helpers
             return AuthorizationResult.Failed(ValidationMessages.AccessDenied);
         }
 
+        // Checks if user can create bookings
         public AuthorizationResult CanCreateBooking(UserContext userContext)
         {
             if (userContext?.IsAdmin == true || userContext?.IsEVOwner == true)
@@ -59,6 +70,7 @@ namespace SparkPoint_Server.Helpers
             return AuthorizationResult.Failed("Only Admins and EV Owners can create bookings.");
         }
 
+        // Checks if user can update a specific booking
         public AuthorizationResult CanUpdateBooking(UserContext userContext, Booking booking)
         {
             if (userContext?.IsAdmin == true)
@@ -79,11 +91,13 @@ namespace SparkPoint_Server.Helpers
             return AuthorizationResult.Failed("Only Admins and booking owners can update bookings.");
         }
 
+        // Checks if user can cancel a specific booking
         public AuthorizationResult CanCancelBooking(UserContext userContext, Booking booking)
         {
             return CanUpdateBooking(userContext, booking); // Same rules as update
         }
 
+        // Checks if user can update booking status
         public AuthorizationResult CanUpdateBookingStatus(UserContext userContext, Booking booking)
         {
             if (userContext?.IsAdmin == true)
@@ -104,6 +118,7 @@ namespace SparkPoint_Server.Helpers
             return AuthorizationResult.Failed("Only Admins and Station Users can update booking status.");
         }
 
+        // Resolves owner NIC based on user context and requested NIC
         public OwnerResolutionResult ResolveOwnerNIC(UserContext userContext, string requestedOwnerNIC)
         {
             if (userContext?.IsEVOwner == true)
@@ -126,6 +141,7 @@ namespace SparkPoint_Server.Helpers
             return OwnerResolutionResult.Failed("Cannot resolve owner NIC.");
         }
 
+        // Gets appropriate MongoDB filter for booking queries based on user role
         public FilterDefinitionResult<Booking> GetBookingsFilter(UserContext userContext)
         {
             var emptyFilter = Builders<Booking>.Filter.Empty;

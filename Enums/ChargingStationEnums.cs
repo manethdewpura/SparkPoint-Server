@@ -1,3 +1,12 @@
+/*
+ * ChargingStationEnums.cs
+ * 
+ * This file contains charging station-related enumerations used throughout the system.
+ * It includes operation status, filter types, sort fields, station types,
+ * and validation errors for charging station operations.
+ * 
+ */
+
 namespace SparkPoint_Server.Enums
 {
     public enum StationOperationStatus
@@ -13,6 +22,7 @@ namespace SparkPoint_Server.Enums
     public enum StationFilterType
     {
         ActiveStatus,
+        Name,
         Location,
         Type,
         SearchTerm
@@ -20,6 +30,7 @@ namespace SparkPoint_Server.Enums
 
     public enum StationSortField
     {
+        Name,
         Location,
         Type,
         TotalSlots,
@@ -38,11 +49,22 @@ namespace SparkPoint_Server.Enums
     public enum StationValidationError
     {
         None,
+        NameRequired,
+        NameTooLong,
         LocationRequired,
-        LocationTooLong,
+        LongitudeRequired,
+        LatitudeRequired,
+        InvalidLongitude,
+        InvalidLatitude,
         TypeRequired,
         InvalidType,
         TotalSlotsMustBePositive,
-        TotalSlotsExceedsMaximum
+        TotalSlotsExceedsMaximum,
+        AddressTooLong,
+        CityTooLong,
+        ProvinceTooLong,
+        ContactPhoneTooLong,
+        ContactEmailTooLong,
+        InvalidContactEmail
     }
 }

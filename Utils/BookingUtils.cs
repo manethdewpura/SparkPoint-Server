@@ -1,3 +1,11 @@
+/*
+ * BookingUtils.cs
+ * 
+ * This utility class provides booking-related helper methods and filter builders.
+ * It includes MongoDB filter construction for booking queries, sorting definitions,
+ * and various filtering utilities for booking operations.
+ */
+
 using System;
 using System.Collections.Generic;
 using MongoDB.Driver;
@@ -11,6 +19,7 @@ namespace SparkPoint_Server.Utils
     public static class BookingFilterUtils
     {
 
+        // Builds MongoDB filter for booking queries based on provided filter criteria
         public static FilterDefinition<Booking> BuildFilter(BookingFilterModel filter, FilterDefinition<Booking> baseFilter = null)
         {
             var filterBuilder = baseFilter ?? Builders<Booking>.Filter.Empty;
@@ -48,6 +57,7 @@ namespace SparkPoint_Server.Utils
             return filterBuilder;
         }
 
+        // Gets filter for active bookings (excludes cancelled/completed bookings)
         public static FilterDefinition<Booking> GetActiveBookingsFilter()
         {
             return Builders<Booking>.Filter.Not(
@@ -55,6 +65,7 @@ namespace SparkPoint_Server.Utils
             );
         }
 
+        // Gets filter for conflicting bookings at a specific station and time
         public static FilterDefinition<Booking> GetConflictingBookingsFilter(
             string stationId, 
             DateTime reservationTime, 
@@ -77,26 +88,31 @@ namespace SparkPoint_Server.Utils
             return filterBuilder;
         }
 
+        // Gets filter for bookings by owner NIC
         public static FilterDefinition<Booking> GetOwnerBookingsFilter(string ownerNIC)
         {
             return Builders<Booking>.Filter.Eq(b => b.OwnerNIC, ownerNIC);
         }
 
+        // Gets filter for bookings by station ID
         public static FilterDefinition<Booking> GetStationBookingsFilter(string stationId)
         {
             return Builders<Booking>.Filter.Eq(b => b.StationId, stationId);
         }
 
+        // Gets filter for bookings by status
         public static FilterDefinition<Booking> GetStatusFilter(string status)
         {
             return Builders<Booking>.Filter.Eq(b => b.Status, status);
         }
 
+        // Gets filter for bookings by multiple statuses
         public static FilterDefinition<Booking> GetMultipleStatusFilter(string[] statuses)
         {
             return Builders<Booking>.Filter.In(b => b.Status, statuses);
         }
 
+        // Gets filter for bookings within a date range
         public static FilterDefinition<Booking> GetDateRangeFilter(DateTime? fromDate, DateTime? toDate)
         {
             var filters = new List<FilterDefinition<Booking>>();
@@ -120,12 +136,14 @@ namespace SparkPoint_Server.Utils
             return Builders<Booking>.Filter.And(filters);
         }
 
+        // Gets filter for bookings that can be modified (not too close to reservation time)
         public static FilterDefinition<Booking> GetModifiableBookingsFilter(double hoursBuffer = ApplicationConstants.MinModificationHours)
         {
             var cutoffTime = DateTime.Now.AddHours(hoursBuffer);
             return Builders<Booking>.Filter.Gte(b => b.ReservationTime, cutoffTime);
         }
 
+        // Gets MongoDB sort definition for booking queries
         public static SortDefinition<Booking> GetSortDefinition(BookingSortField sortBy = BookingSortField.CreatedAt, bool ascending = false)
         {
             switch (sortBy)

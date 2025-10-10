@@ -1,3 +1,11 @@
+/*
+ * UserConstants.cs
+ * 
+ * This file contains user-related constants used throughout the system.
+ * It includes validation messages, success messages, field length limits,
+ * and collection names for user management operations.
+ */
+
 namespace SparkPoint_Server.Constants
 {
     public static class EVOwnerConstants
@@ -19,9 +27,15 @@ namespace SparkPoint_Server.Constants
         public const string EVOwnersCollection = "EVOwners";
         
         public const int MaxPhoneLength = 10;
-        public const int MaxNICLength = 20;
+        public const int MaxNICLength = 12;
         public const int MinPhoneLength = 8;
-        public const int MinNICLength = 5;
+        public const int MinNICLength = 10;
+        
+        // NIC validation error messages
+        public const string NICRequired = "NIC is required.";
+        public const string NICInvalidFormat = "Invalid NIC format. Please enter a valid Sri Lankan NIC (9 digits + V/X for old format or 12 digits for new format).";
+        public const string NICTooShort = "NIC is too short. Please enter a valid NIC.";
+        public const string NICTooLong = "NIC is too long. Please enter a valid NIC.";
     }
 
     public static class UserConstants

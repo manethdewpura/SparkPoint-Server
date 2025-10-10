@@ -1,3 +1,12 @@
+/*
+ * JwtHelper.cs
+ * 
+ * This helper class provides JWT token generation and validation functionality.
+ * It handles access token creation with proper claims and expiration settings,
+ * and includes token validation methods for secure authentication.
+ * 
+ */
+
 using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
@@ -12,6 +21,7 @@ namespace SparkPoint_Server.Helpers
 {
     public static class JwtHelper
     {
+        // Generates JWT access token for authenticated user
         public static string GenerateAccessToken(User user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -35,6 +45,7 @@ namespace SparkPoint_Server.Helpers
             return tokenHandler.WriteToken(token);
         }
 
+        // Generates a cryptographically secure refresh token
         public static string GenerateRefreshToken()
         {
             const int tokenLength = 32;
@@ -47,6 +58,7 @@ namespace SparkPoint_Server.Helpers
             }
         }
 
+        // Generates refresh token with expiry and metadata
         public static RefreshTokenData GenerateRefreshTokenWithExpiry()
         {
             return new RefreshTokenData
@@ -58,6 +70,7 @@ namespace SparkPoint_Server.Helpers
             };
         }
 
+        // Validates JWT token and returns claims principal
         public static ClaimsPrincipal ValidateToken(string token, bool validateLifetime = true)
         {
             var tokenHandler = new JwtSecurityTokenHandler();

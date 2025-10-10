@@ -1,3 +1,12 @@
+/*
+ * RateLimitAttribute.cs
+ * 
+ * This middleware provides rate limiting functionality for API endpoints.
+ * It implements per-minute rate limiting with different limits for different
+ * operation types (auth, mutation, read) and includes proper cleanup.
+ * 
+ */
+
 using System;
 using System.Collections.Concurrent;
 using System.Net;
@@ -19,12 +28,14 @@ namespace SparkPoint_Server.Middleware
         private static readonly ConcurrentDictionary<string, RateLimitInfo> _rateLimitStore = 
             new ConcurrentDictionary<string, RateLimitInfo>();
 
+        // Constructor: Initializes rate limiting with specified parameters
         public RateLimitAttribute(int requestsPerMinute = AuthConstants.ReadRateLimitPerMinute, string rateLimitType = "read")
         {
             _requestsPerMinute = requestsPerMinute;
             _rateLimitType = rateLimitType;
         }
 
+        // Validates rate limits before action execution
         public override void OnActionExecuting(HttpActionContext actionContext)
         {
             var identifier = GetClientIdentifier(actionContext);
@@ -78,6 +89,7 @@ namespace SparkPoint_Server.Middleware
             base.OnActionExecuting(actionContext);
         }
 
+        // Adds rate limit headers to response after action execution
         public override void OnActionExecuted(HttpActionExecutedContext actionExecutedContext)
         {
             // Add rate limit headers to response
@@ -104,6 +116,7 @@ namespace SparkPoint_Server.Middleware
             base.OnActionExecuted(actionExecutedContext);
         }
 
+        // Gets client identifier for rate limiting (user ID or IP)
         private string GetClientIdentifier(HttpActionContext actionContext)
         {
             // Get client IP
@@ -120,6 +133,7 @@ namespace SparkPoint_Server.Middleware
             return $"ip:{clientIp}";
         }
 
+        // Gets client IP address from request headers
         private string GetClientIpAddress(HttpActionContext actionContext)
         {
             // Check for forwarded IP (load balancer/proxy)
@@ -150,6 +164,7 @@ namespace SparkPoint_Server.Middleware
             return "unknown";
         }
 
+        // Extracts user ID from JWT token for user-based rate limiting
         private string GetUserIdFromToken(HttpActionContext actionContext)
         {
             try
@@ -170,6 +185,7 @@ namespace SparkPoint_Server.Middleware
             }
         }
 
+        // Cleans up old rate limit entries to prevent memory leaks
         private void CleanupOldEntries()
         {
             try

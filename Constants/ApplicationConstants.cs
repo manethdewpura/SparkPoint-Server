@@ -1,3 +1,11 @@
+/*
+ * ApplicationConstants.cs
+ * 
+ * This file contains application-wide constants used throughout the system.
+ * It includes time constraints, booking limits, user role definitions,
+ * and default configuration values for the SparkPoint application.
+ */
+
 namespace SparkPoint_Server.Constants
 {
 
@@ -7,6 +15,9 @@ namespace SparkPoint_Server.Constants
         public const int MaxAdvanceReservationDays = 7;
         public const int MinCancellationHours = 12;
         public const int MinModificationHours = 12;
+
+        // Booking constraints
+        public const int MaxSlotsPerBooking = 5;
 
         // User roles
         public const int AdminRoleId = 1;

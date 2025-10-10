@@ -1,3 +1,12 @@
+/*
+ * OwnAccountMiddleware.cs
+ * 
+ * This middleware provides account ownership validation for API endpoints.
+ * It ensures that users can only access their own account data and operations,
+ * with proper role-based access control for different user types.
+ * 
+ */
+
 using System;
 using System.Linq;
 using System.Net;
@@ -17,11 +26,13 @@ namespace SparkPoint_Server.Attributes
         private readonly string _nicParameterName;
         private readonly string _userIdParameterName;
 
+        // Constructor: Initializes middleware with NIC parameter name
         public OwnAccountMiddleware(string nicParameterName = "nic")
         {
             _nicParameterName = nicParameterName;
         }
 
+        // Constructor: Initializes middleware with user ID parameter name
         public OwnAccountMiddleware(string userIdParameterName, bool isUserIdBased)
         {
             if (isUserIdBased)
@@ -30,6 +41,7 @@ namespace SparkPoint_Server.Attributes
             }
         }
 
+        // Validates account ownership before action execution
         public override void OnActionExecuting(HttpActionContext actionContext)
         {
             try
@@ -98,6 +110,7 @@ namespace SparkPoint_Server.Attributes
             }
         }
 
+        // Validates EV owner ownership based on NIC or user ID
         private bool ValidateEVOwnerOwnership(HttpActionContext actionContext, string currentUserId)
         {
             var dbContext = new MongoDbContext();
@@ -127,6 +140,7 @@ namespace SparkPoint_Server.Attributes
             return evOwnerRecord != null;
         }
 
+        // Extracts parameter value from action context
         private string GetParameterValue(HttpActionContext actionContext, string parameterName)
         {
             if (actionContext.ActionArguments.ContainsKey(parameterName))

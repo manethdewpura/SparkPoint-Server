@@ -1,4 +1,12 @@
-﻿using System;
+﻿/*
+ * WebApiConfig.cs
+ * 
+ * This file contains Web API configuration settings and middleware setup.
+ * It configures JSON serialization, CORS policies, routing, authentication,
+ * and other global settings for the SparkPoint Web API application.
+ */
+
+using System;
 using System.Configuration;
 using System.Collections.Generic;
 using System.Linq;
@@ -100,21 +108,23 @@ namespace SparkPoint_Server
                 ? request.Headers.GetValues("Origin")?.FirstOrDefault()
                 : null;
             
-            // Production: Use specific allowed origins
-            if (IsProductionEnvironment)
+            // Check if wildcard is allowed
+            var allowWildcard = AllowedOrigins.Contains("*");
+            
+            if (!string.IsNullOrEmpty(origin))
             {
-                if (!string.IsNullOrEmpty(origin) && AllowedOrigins.Contains(origin.ToLowerInvariant()))
+                // If specific origin is in allowed list or wildcard is enabled, allow it
+                if (allowWildcard || AllowedOrigins.Contains(origin.ToLowerInvariant()))
                 {
                     response.Headers.Add("Access-Control-Allow-Origin", origin);
                     response.Headers.Add("Access-Control-Allow-Credentials", "true");
                 }
                 // If origin is not allowed, don't add CORS headers (will cause CORS error on frontend)
             }
-            else
+            else if (allowWildcard)
             {
-                // Development: Allow all origins but without credentials for security
+                // Only use wildcard if no origin header and wildcard is explicitly allowed
                 response.Headers.Add("Access-Control-Allow-Origin", "*");
-                // Note: Cannot use credentials with wildcard origin
             }
 
             response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");

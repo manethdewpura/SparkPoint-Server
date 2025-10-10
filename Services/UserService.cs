@@ -1,5 +1,16 @@
+/*
+ * UserService.cs
+ * 
+ * This service handles all business logic related to user management operations.
+ * It manages user registration, profile updates, user listing, and account
+ * activation/deactivation with proper validation and authorization checks.
+ * All operations interact with MongoDB collections for data persistence.
+ * 
+ */
+
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using MongoDB.Driver;
 using SparkPoint_Server.Models;
 using SparkPoint_Server.Helpers;
@@ -14,6 +25,7 @@ namespace SparkPoint_Server.Services
         private readonly IMongoCollection<User> _usersCollection;
         private readonly IMongoCollection<ChargingStation> _stationsCollection;
 
+        // Constructor: Initializes MongoDB collections
         public UserService()
         {
             var dbContext = new MongoDbContext();
@@ -21,6 +33,7 @@ namespace SparkPoint_Server.Services
             _stationsCollection = dbContext.GetCollection<ChargingStation>(ChargingStationConstants.ChargingStationsCollection);
         }
 
+        // Registers a new admin user
         public UserOperationResult RegisterAdmin(RegisterModel model)
         {
             var validationResult = UserUtils.ValidateRegisterModel(model);
@@ -62,6 +75,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Updates user profile
         public UserOperationResult UpdateProfile(string userId, UserUpdateModel model)
         {
             var validationResult = UserUtils.ValidateUserUpdateModel(model);
@@ -110,6 +124,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Gets user profile by user ID
         public UserRetrievalResult GetProfile(string userId)
         {
             try
@@ -129,6 +144,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Creates a new station user
         public UserOperationResult CreateStationUser(CreateStationUserModel model)
         {
             var validationResult = UserUtils.ValidateCreateStationUserModel(model);
@@ -182,6 +198,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Gets station user profile by user ID
         public UserRetrievalResult GetStationUserProfile(string userId)
         {
             try
@@ -197,7 +214,14 @@ namespace SparkPoint_Server.Services
                     return UserRetrievalResult.Failed(UserConstants.NotStationUser);
                 }
 
-                var profile = UserUtils.CreateStationUserProfile(stationUser);
+                ChargingStation stationDetails = null;
+                if (!string.IsNullOrEmpty(stationUser.ChargingStationId))
+                {
+                    stationDetails = _stationsCollection.Find(s => s.Id == stationUser.ChargingStationId).FirstOrDefault();
+                }
+
+                var profile = UserUtils.CreateStationUserProfileWithStation(stationUser, stationDetails);
+
                 return UserRetrievalResult.Success(profile);
             }
             catch (Exception ex)
@@ -206,6 +230,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Updates station user profile
         public UserOperationResult UpdateStationUser(string userId, UserUpdateModel model)
         {
             var validationResult = UserUtils.ValidateUserUpdateModel(model);
@@ -254,6 +279,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Checks if user account is active
         public bool IsUserActive(string userId)
         {
             try
@@ -267,6 +293,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Checks if user has specific role
         public bool CheckUserRole(string userId, int expectedRoleId)
         {
             try
@@ -277,6 +304,34 @@ namespace SparkPoint_Server.Services
             catch
             {
                 return false;
+            }
+        }
+
+        // Gets all station users with optional filtering
+        public UserRetrievalResult GetAllStationUsers(UserListFilterModel filter = null)
+        {
+            try
+            {
+                // Build the base filter for station users only
+                var stationUserFilter = Builders<User>.Filter.Eq(u => u.RoleId, ApplicationConstants.StationUserRoleId);
+                
+                // Apply additional filters if provided
+                var combinedFilter = stationUserFilter;
+                if (filter != null)
+                {
+                    var additionalFilter = UserFilterHelper.BuildUserFilter(filter);
+                    combinedFilter = Builders<User>.Filter.And(stationUserFilter, additionalFilter);
+                }
+
+                var stationUsers = _usersCollection.Find(combinedFilter).ToList();
+
+                var userProfiles = stationUsers.Select(UserUtils.CreateStationUserProfile).ToList();
+                
+                return UserRetrievalResult.Success(userProfiles);
+            }
+            catch (Exception ex)
+            {
+                return UserRetrievalResult.Failed(ex.Message);
             }
         }
     }

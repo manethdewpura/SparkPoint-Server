@@ -1,4 +1,14 @@
-﻿using System;
+﻿/*
+ * UsersController.cs
+ * 
+ * This controller handles all HTTP requests related to user management operations.
+ * It provides endpoints for admin registration, user profile management, user listing,
+ * and account activation/deactivation. All operations are secured with appropriate
+ * role-based authorization.
+ * 
+ */
+
+using System;
 using System.Security.Claims;
 using System.Web.Http;
 using SparkPoint_Server.Models;
@@ -15,13 +25,16 @@ namespace SparkPoint_Server.Controllers
     {
         private readonly UserService _userService;
 
+        // Constructor: Initializes the UserService dependency
         public UsersController()
         {
             _userService = new UserService();
         }
 
+        // Registers a new admin user (admin only)
         [HttpPost]
         [Route("admin/register")]
+        [AdminOnly]
         public IHttpActionResult RegisterAdmin(RegisterModel model)
         {
             if (model == null)
@@ -46,9 +59,10 @@ namespace SparkPoint_Server.Controllers
             return Ok(new { Message = result.Message, UserId = ((dynamic)result.Data)?.UserId });
         }
 
-        [HttpPut]
+        // Updates user profile (admin and station users only)
+        [HttpPatch]
         [Route("profile")]
-        [AdminOnly]
+        [AdminAndStationUser]
         [OwnAccountMiddleware]
         public IHttpActionResult UpdateProfile(UserUpdateModel model)
         {
@@ -56,8 +70,13 @@ namespace SparkPoint_Server.Controllers
             if (string.IsNullOrEmpty(currentUserId))
                 return Unauthorized();
 
-            if (!_userService.CheckUserRole(currentUserId, ApplicationConstants.AdminRoleId))
-                return BadRequest(UserConstants.AdminOnlyEndpoint);
+            var currentUserRoleId = UserContextHelper.GetCurrentUserRoleId(this);
+            if (!currentUserRoleId.HasValue)
+                return Unauthorized();
+
+            if (!_userService.CheckUserRole(currentUserId, ApplicationConstants.AdminRoleId) && 
+                !_userService.CheckUserRole(currentUserId, ApplicationConstants.StationUserRoleId))
+                return BadRequest("Only Admin and Station User roles can update their profiles through this endpoint.");
 
             var result = _userService.UpdateProfile(currentUserId, model);
             
@@ -69,9 +88,10 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
+        // Gets current user profile (admin and station users only)
         [HttpGet]
         [Route("profile")]
-        [AdminOnly]
+        [AdminAndStationUser]
         [OwnAccountMiddleware]
         public IHttpActionResult GetProfile()
         {
@@ -79,8 +99,14 @@ namespace SparkPoint_Server.Controllers
             if (string.IsNullOrEmpty(currentUserId))
                 return Unauthorized();
 
-            if (!_userService.CheckUserRole(currentUserId, ApplicationConstants.AdminRoleId))
-                return BadRequest(UserConstants.AdminOnlyEndpoint);
+            var currentUserRoleId = UserContextHelper.GetCurrentUserRoleId(this);
+            if (!currentUserRoleId.HasValue)
+                return Unauthorized();
+
+
+            if (!_userService.CheckUserRole(currentUserId, ApplicationConstants.AdminRoleId) && 
+                !_userService.CheckUserRole(currentUserId, ApplicationConstants.StationUserRoleId))
+                return BadRequest("Only Admin and Station User roles can access their profiles through this endpoint.");
 
             var result = _userService.GetProfile(currentUserId);
             
@@ -92,6 +118,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.UserProfile);
         }
 
+        // Creates a new station user (admin only)
         [HttpPost]
         [Route("station-user")]
         [AdminOnly]
@@ -122,6 +149,7 @@ namespace SparkPoint_Server.Controllers
             return Ok(new { Message = result.Message, UserId = ((dynamic)result.Data)?.UserId });
         }
 
+        // Gets station user profile by user ID (admin only)
         [HttpGet]
         [Route("station-user/{userId}")]
         [AdminOnly]
@@ -137,7 +165,8 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.UserProfile);
         }
 
-        [HttpPut]
+        // Updates station user profile (admin only)
+        [HttpPatch]
         [Route("station-user/{userId}")]
         [AdminOnly]
         public IHttpActionResult UpdateStationUser(string userId, UserUpdateModel model)
@@ -152,6 +181,23 @@ namespace SparkPoint_Server.Controllers
             return Ok(result.Message);
         }
 
+        // Gets all station users with optional filtering (admin only)
+        [HttpGet]
+        [Route("station-users")]
+        [AdminOnly]
+        public IHttpActionResult GetAllStationUsers([FromUri] UserListFilterModel filter = null)
+        {
+            var result = _userService.GetAllStationUsers(filter);
+            
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result.ErrorMessage);
+            }
+
+            return Ok(result.UserProfile);
+        }
+
+        // Converts user operation status to appropriate HTTP response
         private IHttpActionResult GetErrorResponse(UserOperationStatus status, string errorMessage)
         {
             switch (status)

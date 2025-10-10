@@ -1,13 +1,23 @@
+/*
+ * AuthService.cs
+ * 
+ * This service handles all authentication business logic including user authentication,
+ * token refresh, session management, and user information retrieval. It manages JWT access
+ * tokens and refresh tokens with proper security measures and token rotation policies.
+ * 
+ */
+
+using MongoDB.Driver;
+using SparkPoint_Server.Constants;
+using SparkPoint_Server.Enums;
+using SparkPoint_Server.Helpers;
+using SparkPoint_Server.Models;
+using SparkPoint_Server.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
-using MongoDB.Driver;
-using SparkPoint_Server.Models;
-using SparkPoint_Server.Helpers;
-using SparkPoint_Server.Utils;
-using SparkPoint_Server.Constants;
-using SparkPoint_Server.Enums;
+using static System.Collections.Specialized.BitVector32;
 
 namespace SparkPoint_Server.Services
 {
@@ -18,6 +28,7 @@ namespace SparkPoint_Server.Services
         private readonly IMongoCollection<EVOwner> _evOwnersCollection;
         private readonly RefreshTokenService _refreshTokenService;
 
+        // Constructor: Initializes MongoDB collections and services
         public AuthService()
         {
             var dbContext = new MongoDbContext();
@@ -27,6 +38,7 @@ namespace SparkPoint_Server.Services
             _refreshTokenService = new RefreshTokenService();
         }
 
+        // Authenticates user credentials and returns tokens
         public Models.AuthenticationResult AuthenticateUser(string username, string password, RefreshTokenContext context = null)
         {
             var user = _usersCollection.Find(u => u.Username == username).FirstOrDefault();
@@ -45,6 +57,18 @@ namespace SparkPoint_Server.Services
                 var status = GetInactiveUserStatus(user);
                 return Models.AuthenticationResult.Failed(status);
             }
+            if (AuthUtils.IsStationUser(user.RoleId))
+            {
+                if(user.ChargingStationId == null)
+                {
+                    return Models.AuthenticationResult.Failed(AuthenticationStatus.Failed);
+                }
+                var station = new ChargingStationService().GetStation(user.ChargingStationId);
+                if(station == null || !station.Station.IsActive)
+                {
+                    return Models.AuthenticationResult.Failed(AuthenticationStatus.StationDeactivated);
+                }
+            }
 
             var accessToken = JwtHelper.GenerateAccessToken(user);
 
@@ -57,6 +81,7 @@ namespace SparkPoint_Server.Services
             return Models.AuthenticationResult.Success(accessToken, refreshToken, userInfo);
         }
 
+        // Refreshes access token using refresh token
         public TokenRefreshResult RefreshToken(string userId, string refreshToken, RefreshTokenContext context = null)
         {
             var user = _usersCollection.Find(u => u.Id == userId).FirstOrDefault();
@@ -72,7 +97,7 @@ namespace SparkPoint_Server.Services
 
             var refreshContext = context ?? CreateDefaultContext();
 
-            var validationResult = _refreshTokenService.ValidateAndConsumeToken(userId, refreshToken, refreshContext);
+            var validationResult = _refreshTokenService.ValidateRefreshToken(userId, refreshToken, refreshContext);
             
             if (!validationResult.IsSuccess)
             {
@@ -80,16 +105,32 @@ namespace SparkPoint_Server.Services
             }
 
             var newAccessToken = JwtHelper.GenerateAccessToken(user);
-            var newRefreshTokenEntry = _refreshTokenService.CreateRefreshToken(
-                userId, 
-                refreshContext, 
-                validationResult.TokenEntry.TokenId
-            );
-            var newRefreshToken = newRefreshTokenEntry.TokenHash;
+            
+            // Check if refresh token is expired or close to expiring
+            var currentToken = validationResult.TokenEntry;
+            var timeUntilExpiry = currentToken.ExpiresAt - refreshContext.RequestTime;
+            var shouldRefreshToken = timeUntilExpiry.TotalDays <= AuthConstants.RefreshTokenRenewalThresholdDays;
+            
+            string newRefreshToken;
+            
+            if (shouldRefreshToken)
+            {
+                // Create new refresh token and mark old one as used
+                _refreshTokenService.MarkTokenAsUsed(currentToken.TokenId, refreshContext.RequestTime);
+                var newTokenEntry = _refreshTokenService.CreateRefreshToken(userId, refreshContext, currentToken.TokenId);
+                newRefreshToken = newTokenEntry.TokenHash;
+            }
+            else
+            {
+                // Keep existing refresh token and update last used time
+                _refreshTokenService.UpdateTokenLastUsed(currentToken.TokenId, refreshContext.RequestTime);
+                newRefreshToken = refreshToken;
+            }
 
             return TokenRefreshResult.Success(newAccessToken, newRefreshToken);
         }
 
+        // Logs out user and revokes tokens
         public void LogoutUser(string userId, string refreshToken = null)
         {
             if (string.IsNullOrEmpty(refreshToken))
@@ -98,7 +139,10 @@ namespace SparkPoint_Server.Services
             }
             else
             {
-                var userTokens = _refreshTokenService.GetActiveUserTokens(userId);
+                var userTokens = _refreshTokensCollection
+                    .Find(t => t.UserId == userId && !t.IsRevoked)
+                    .ToList();
+
                 foreach (var token in userTokens)
                 {
                     if (TokenSecurityUtils.VerifyToken(refreshToken, token.TokenHash, token.Salt))
@@ -110,6 +154,7 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Gets active sessions for a user
         public List<object> GetActiveUserSessions(string userId)
         {
             var activeTokens = _refreshTokenService.GetActiveUserTokens(userId);
@@ -125,6 +170,7 @@ namespace SparkPoint_Server.Services
             }).Cast<object>().ToList();
         }
 
+        // Revokes a specific user session
         public void RevokeUserSession(string userId, string tokenId)
         {
             var token = _refreshTokensCollection
@@ -137,11 +183,13 @@ namespace SparkPoint_Server.Services
             }
         }
 
+        // Cleans up expired tokens
         public void CleanupExpiredTokens()
         {
             _refreshTokenService.CleanupExpiredTokens();
         }
 
+        // Creates default refresh token context
         private RefreshTokenContext CreateDefaultContext()
         {
             var context = HttpContext.Current;
@@ -153,6 +201,7 @@ namespace SparkPoint_Server.Services
             };
         }
 
+        // Extracts client IP address from HTTP context
         private string GetClientIpAddress(HttpContext context)
         {
             if (context?.Request == null) return "Unknown";
@@ -176,6 +225,7 @@ namespace SparkPoint_Server.Services
             return context.Request.UserHostAddress ?? "Unknown";
         }
 
+        // Determines inactive user status based on role
         private AuthenticationStatus GetInactiveUserStatus(User user)
         {
             if (AuthUtils.IsEVOwner(user.RoleId))
@@ -189,6 +239,7 @@ namespace SparkPoint_Server.Services
             return AuthenticationStatus.UserInactive;
         }
 
+        // Creates user info response object based on role
         private object GetUserInfoForResponse(User user)
         {
             if (AuthUtils.IsEVOwner(user.RoleId))
@@ -200,19 +251,41 @@ namespace SparkPoint_Server.Services
                     { 
                         user.Id, 
                         user.Username, 
-                        user.Email, 
+                        user.Email,
+                        user.FirstName,
+                        user.LastName,
                         RoleId = user.RoleId,
                         RoleName = AuthUtils.GetRoleName(user.RoleId),
-                        NIC = evOwner.NIC 
+                        NIC = evOwner.NIC,
+                        Phone = evOwner.Phone
                     };
                 }
             }
 
+            // For Station Users, include ChargingStationId
+            if (AuthUtils.IsStationUser(user.RoleId))
+            {
+                return new 
+                { 
+                    user.Id, 
+                    user.Username, 
+                    user.Email,
+                    user.FirstName,
+                    user.LastName,
+                    RoleId = user.RoleId,
+                    RoleName = AuthUtils.GetRoleName(user.RoleId),
+                    ChargingStationId = user.ChargingStationId
+                };
+            }
+
+            // For Admin Users
             return new 
             { 
                 user.Id, 
                 user.Username, 
-                user.Email, 
+                user.Email,
+                user.FirstName,
+                user.LastName,
                 RoleId = user.RoleId,
                 RoleName = AuthUtils.GetRoleName(user.RoleId)
             };
